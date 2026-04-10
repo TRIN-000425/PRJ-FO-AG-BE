@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" href="assets/icon.svg">
 </head>
 <body>
-    <div class="login-container">
+    <div id="login-container" class="login-container">
         <form id="login-form" class="login-card">
             <h2>Welcome Back</h2>
             <p>Please login to your account</p>
@@ -25,6 +25,14 @@
             <button type="submit" id="login-btn">Login</button>
             <div id="message" class="message"></div>
         </form>
+    </div>
+
+    <div id="dashboard-container" class="login-container" style="display: none;">
+        <div class="login-card">
+            <h2>Welcome, <span id="user-display">User</span>!</h2>
+            <p>You are successfully logged in.</p>
+            <button id="logout-btn" style="background-color: #f02849;">Logout</button>
+        </div>
     </div>
     <script src="app.js"></script>
     <script>

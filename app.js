@@ -1,10 +1,37 @@
 document.addEventListener('DOMContentLoaded', () => {
+    const loginContainer = document.getElementById('login-container');
+    const dashboardContainer = document.getElementById('dashboard-container');
     const loginForm = document.getElementById('login-form');
     const loginBtn = document.getElementById('login-btn');
+    const logoutBtn = document.getElementById('logout-btn');
     const messageDiv = document.getElementById('message');
+    const userDisplay = document.getElementById('user-display');
 
     // REPLACE this with your actual Google Apps Script Web App URL
     const GA_BACKEND_URL = 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE';
+
+    // Check for existing login state on load
+    checkLoginState();
+
+    function checkLoginState() {
+        const loggedInUser = localStorage.getItem('isLoggedIn');
+        if (loggedInUser) {
+            showDashboard(loggedInUser);
+        } else {
+            showLogin();
+        }
+    }
+
+    function showDashboard(username) {
+        loginContainer.style.display = 'none';
+        dashboardContainer.style.display = 'block';
+        userDisplay.textContent = username;
+    }
+
+    function showLogin() {
+        loginContainer.style.display = 'block';
+        dashboardContainer.style.display = 'none';
+    }
 
     loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -12,7 +39,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const username = document.getElementById('username').value;
         const password = document.getElementById('password').value;
 
-        // Visual feedback
         loginBtn.disabled = true;
         loginBtn.textContent = 'Logging in...';
         messageDiv.className = 'message';
@@ -20,37 +46,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             if (GA_BACKEND_URL === 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE') {
-                // Mock response for development if no URL is provided
+                // Mock response
                 console.log('Mock login attempt:', { username, password });
                 await new Promise(resolve => setTimeout(resolve, 1500));
                 
-                // For demo: success if username is 'admin'
                 if (username === 'admin') {
-                    showMessage('Login successful! (Mock Mode)', 'success');
+                    handleLoginSuccess(username);
                 } else {
                     showMessage('Invalid credentials. (Mock Mode: use "admin")', 'error');
                 }
             } else {
-                // Actual connection to Google Apps Script
+                // Actual GA connection
                 const response = await fetch(GA_BACKEND_URL, {
                     method: 'POST',
-                    mode: 'cors', // Crucial for cross-origin requests
+                    mode: 'cors',
                     cache: 'no-cache',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        action: 'login',
-                        username: username,
-                        password: password
-                    }),
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'login', username, password }),
                 });
 
                 const result = await response.json();
-
                 if (result.status === 'success') {
-                    showMessage('Login successful!', 'success');
-                    // Redirect or handle success
+                    handleLoginSuccess(username);
                 } else {
                     showMessage(result.message || 'Login failed.', 'error');
                 }
@@ -63,6 +80,16 @@ document.addEventListener('DOMContentLoaded', () => {
             loginBtn.textContent = 'Login';
         }
     });
+
+    logoutBtn.addEventListener('click', () => {
+        localStorage.removeItem('isLoggedIn');
+        showLogin();
+    });
+
+    function handleLoginSuccess(username) {
+        localStorage.setItem('isLoggedIn', username);
+        showDashboard(username);
+    }
 
     function showMessage(text, type) {
         messageDiv.textContent = text;
