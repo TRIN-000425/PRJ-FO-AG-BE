@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="600" viewBox="0 0 1000 600">
+  <rect width="100%" height="100%" fill="#f8f9fa"/>
+  <rect x="50" y="50" width="400" height="200" fill="none" stroke="#333" stroke-width="2"/>
+  <text x="70" y="80" font-family="Arial" font-size="20">Unit 101 - Bedroom</text>
+  <rect x="50" y="300" width="400" height="250" fill="none" stroke="#333" stroke-width="2"/>
+  <text x="70" y="330" font-family="Arial" font-size="20">Unit 101 - Kitchen</text>
+  <rect x="550" y="50" width="400" height="500" fill="none" stroke="#333" stroke-width="2"/>
+  <text x="570" y="80" font-family="Arial" font-size="20">Unit 101 - Living Room</text>
+  <line x1="450" y1="150" x2="550" y2="150" stroke="#333" stroke-width="2" stroke-dasharray="5,5"/>
+  <text x="50%" y="95%" font-family="Arial" font-size="14" text-anchor="middle" fill="#999">Click anywhere to add a defect pin</text>
+</svg>

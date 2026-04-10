@@ -26,6 +26,16 @@ document.addEventListener('DOMContentLoaded', () => {
         loginContainer.style.display = 'none';
         dashboardContainer.style.display = 'block';
         userDisplay.textContent = username;
+        
+        // Add Start button if it doesn't exist
+        if (!document.getElementById('start-tracking-btn')) {
+            const startBtn = document.createElement('button');
+            startBtn.id = 'start-tracking-btn';
+            startBtn.textContent = 'Start Defect Tracking';
+            startBtn.style.marginTop = '10px';
+            startBtn.onclick = () => window.location.href = 'defect.html';
+            dashboardContainer.querySelector('.login-card').insertBefore(startBtn, logoutBtn);
+        }
     }
 
     function showLogin() {

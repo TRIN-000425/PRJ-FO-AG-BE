@@ -4,7 +4,11 @@ const ASSETS_TO_CACHE = [
   '/index.html',
   '/style.css',
   '/app.js',
-  '/manifest.json'
+  '/defect.html',
+  '/defect-logic.js',
+  '/manifest.json',
+  '/assets/icon.svg',
+  '/assets/floorplan-placeholder.png'
 ];
 
 // Install Event
