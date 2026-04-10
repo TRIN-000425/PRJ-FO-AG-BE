@@ -19,6 +19,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     const cancelBtn = document.getElementById('cancel-defect-btn');
     const syncBtn = document.getElementById('sync-btn');
     
+    // Admin Selectors
+    const adminBtn = document.getElementById('admin-btn');
+    const adminModal = document.getElementById('admin-modal');
+    const closeAdminBtn = document.getElementById('close-admin-btn');
+    const addUnitBtn = document.getElementById('add-unit-btn');
+    const addStoryBtn = document.getElementById('add-story-btn');
+    const uploadMapBtn = document.getElementById('upload-map-btn');
+
     const backBtn = document.getElementById('back-btn');
     backBtn.onclick = () => window.location.href = 'index.html';
 
@@ -67,6 +75,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         floorDisplay.textContent = story;
         
         pinsContainer.innerHTML = '';
+        
+        // We try to load from Drive/Direct link if available, fallback to assets/
+        // For now we use the naming convention
         floorplanImg.src = `assets/${unit}_${story}.png`;
         floorplanImg.onerror = () => {
             floorplanImg.src = 'assets/floorplan-placeholder.png';
@@ -77,6 +88,84 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     unitSelect.addEventListener('change', updateSelection);
     storySelect.addEventListener('change', updateSelection);
+
+    // Admin Toggle
+    adminBtn.onclick = () => adminModal.style.display = 'block';
+    closeAdminBtn.onclick = () => adminModal.style.display = 'none';
+
+    // Add Unit Type logic
+    addUnitBtn.onclick = async () => {
+        const val = document.getElementById('new-unit-val').value;
+        const label = document.getElementById('new-unit-label').value;
+        if (!val || !label) return alert('Fill both fields');
+        
+        const res = await fetch(GA_BACKEND_URL, {
+            method: 'POST', mode: 'cors',
+            body: JSON.stringify({ action: 'add_unit', value: val, label: label })
+        });
+        const result = await res.json();
+        if (result.status === 'success') {
+            alert('Unit added! Fetching fresh config...');
+            await loadProjectConfig();
+        }
+    };
+
+    // Add Story logic
+    addStoryBtn.onclick = async () => {
+        const val = document.getElementById('new-story-val').value;
+        const label = document.getElementById('new-story-label').value;
+        if (!val || !label) return alert('Fill both fields');
+        
+        const res = await fetch(GA_BACKEND_URL, {
+            method: 'POST', mode: 'cors',
+            body: JSON.stringify({ action: 'add_story', value: val, label: label })
+        });
+        const result = await res.json();
+        if (result.status === 'success') {
+            alert('Story added! Fetching fresh config...');
+            await loadProjectConfig();
+        }
+    };
+
+    // Upload Floor Plan PNG
+    uploadMapBtn.onclick = async () => {
+        const fileInput = document.getElementById('map-upload-input');
+        const file = fileInput.files[0];
+        if (!file) return alert('Select a PNG file');
+        
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            uploadMapBtn.disabled = true;
+            uploadMapBtn.textContent = 'Uploading...';
+            
+            try {
+                const res = await fetch(GA_BACKEND_URL, {
+                    method: 'POST', mode: 'cors',
+                    body: JSON.stringify({
+                        action: 'upload_map',
+                        unit: unitSelect.value,
+                        story: storySelect.value,
+                        imageBlob: e.target.result
+                    })
+                });
+                const result = await res.json();
+                if (result.status === 'success') {
+                    alert('Floor plan uploaded to Google Drive!');
+                    // Note: Browser caching might prevent immediate image update
+                    // We can force a refresh by adding a timestamp
+                    floorplanImg.src = result.url + "&t=" + new Date().getTime();
+                } else {
+                    alert('Upload failed: ' + result.message);
+                }
+            } catch (err) {
+                alert('Upload error. Check console.');
+            } finally {
+                uploadMapBtn.disabled = false;
+                uploadMapBtn.textContent = 'Upload PNG to Drive';
+            }
+        };
+        reader.readAsDataURL(file);
+    };
 
     syncBtn.addEventListener('click', async () => {
         const defects = JSON.parse(localStorage.getItem('pending_defects') || '[]');

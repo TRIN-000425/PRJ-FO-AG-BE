@@ -58,10 +58,52 @@
     <header style="padding: 10px; background: #1877f2; color: white; display: flex; justify-content: space-between; align-items: center;">
         <span>Defect Tracker</span>
         <div style="display: flex; gap: 10px;">
+            <button id="admin-btn" style="width: auto; padding: 5px 10px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">Project Setup</button>
             <button id="sync-btn" style="width: auto; padding: 5px 10px; background: #42b883; color: white; border: none; border-radius: 4px; cursor: pointer;">Sync to GA</button>
             <button id="back-btn" style="width: auto; padding: 5px 10px; background: #fff; color: #1877f2;">Back</button>
         </div>
     </header>
+
+    <!-- Admin Setup Modal -->
+    <div id="admin-modal" class="defect-modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <h3>Project Setup</h3>
+            <hr style="margin: 15px 0;">
+            
+            <div style="margin-bottom: 20px;">
+                <h4>Add Unit Type</h4>
+                <div style="display: flex; gap: 5px; margin-top: 5px;">
+                    <input type="text" id="new-unit-val" placeholder="ID (e.g. Type-D)" style="flex: 1; padding: 8px;">
+                    <input type="text" id="new-unit-label" placeholder="Display Name (e.g. Type D)" style="flex: 1; padding: 8px;">
+                    <button id="add-unit-btn" style="width: auto;">Add</button>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 20px;">
+                <h4>Add Story / Floor</h4>
+                <div style="display: flex; gap: 5px; margin-top: 5px;">
+                    <input type="text" id="new-story-val" list="common-stories" placeholder="ID (e.g. L4)" style="flex: 1; padding: 8px;">
+                    <datalist id="common-stories">
+                        <option value="Basement">
+                        <option value="L1">
+                        <option value="L2">
+                        <option value="Rooftop">
+                    </datalist>
+                    <input type="text" id="new-story-label" placeholder="Display (e.g. Floor 4)" style="flex: 1; padding: 8px;">
+                    <button id="add-story-btn" style="width: auto;">Add</button>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 20px;">
+                <h4>Upload Floor Plan PNG</h4>
+                <p style="font-size: 0.8rem; color: #666;">Choose Unit and Story first, then upload.</p>
+                <input type="file" id="map-upload-input" accept="image/png" style="margin-top: 5px;">
+                <button id="upload-map-btn" style="width: auto; margin-top: 10px; background: #1877f2;">Upload PNG to Drive</button>
+            </div>
+
+            <button id="close-admin-btn" style="background: #ccc;">Close</button>
+        </div>
+    </div>
 
     <div class="main-content" style="padding: 20px;">
         <div class="selectors" style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
