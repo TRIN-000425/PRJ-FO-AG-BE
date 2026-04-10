@@ -1,15 +1,12 @@
 let currentPinPos = null;
 let compressedPhotoData = null;
+let projectConfig = { unitTypes: [], stories: [] };
 
 const GA_BACKEND_URL = 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE';
 
 document.addEventListener('DOMContentLoaded', async () => {
-    // Session Verification
     const session = JSON.parse(localStorage.getItem('user_session'));
-    if (!session) {
-        window.location.href = 'index.html';
-        return;
-    }
+    if (!session) { window.location.href = 'index.html'; return; }
 
     const mapContainer = document.getElementById('map-container');
     const floorplanImg = document.getElementById('floorplan-img');
@@ -24,37 +21,30 @@ document.addEventListener('DOMContentLoaded', async () => {
     const saveBtn = document.getElementById('save-defect-btn');
     const cancelBtn = document.getElementById('cancel-defect-btn');
     const syncBtn = document.getElementById('sync-btn');
-    
-    // Admin Security: Hide Project Setup if not Admin
     const adminBtn = document.getElementById('admin-btn');
     const adminModal = document.getElementById('admin-modal');
     const closeAdminBtn = document.getElementById('close-admin-btn');
-    if (session.role !== 'Admin') {
-        adminBtn.style.display = 'none';
-    }
 
+    if (session.role !== 'Admin') adminBtn.style.display = 'none';
     const backBtn = document.getElementById('back-btn');
     backBtn.onclick = () => window.location.href = 'index.html';
 
-    // 1. Fetch Config
     await loadProjectConfig();
 
     async function loadProjectConfig() {
-        const cachedConfig = localStorage.getItem('project_config');
-        if (cachedConfig) renderSelectors(JSON.parse(cachedConfig));
+        const cached = localStorage.getItem('project_config');
+        if (cached) { projectConfig = JSON.parse(cached); renderSelectors(projectConfig); }
 
         if (GA_BACKEND_URL !== 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE') {
             try {
-                const response = await fetch(GA_BACKEND_URL, {
-                    method: 'POST', mode: 'cors',
-                    body: JSON.stringify({ action: 'get_config' })
-                });
-                const result = await response.json();
+                const res = await fetch(GA_BACKEND_URL, { method: 'POST', mode: 'cors', body: JSON.stringify({ action: 'get_config' }) });
+                const result = await res.json();
                 if (result.status === 'success') {
-                    localStorage.setItem('project_config', JSON.stringify(result.config));
-                    renderSelectors(result.config);
+                    projectConfig = result.config;
+                    localStorage.setItem('project_config', JSON.stringify(projectConfig));
+                    renderSelectors(projectConfig);
                 }
-            } catch (err) { console.warn('Offline: Using cached config'); }
+            } catch (err) { console.warn('Offline: Using cache'); }
         }
     }
 
@@ -70,7 +60,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         unitDisplay.textContent = unit;
         floorDisplay.textContent = story;
         pinsContainer.innerHTML = '';
-        floorplanImg.src = `assets/${unit}_${story}.png`;
+
+        // SEARCH FOR CUSTOM MAP URL IN CONFIG
+        const currentStoryData = projectConfig.stories.find(s => s.value === story);
+        if (currentStoryData && currentStoryData.mapUrl) {
+            floorplanImg.src = currentStoryData.mapUrl;
+        } else {
+            floorplanImg.src = `assets/${unit}_${story}.png`;
+        }
+        
         floorplanImg.onerror = () => { floorplanImg.src = 'assets/floorplan-placeholder.png'; };
         loadPinsForCurrentView(unit, story);
     }
@@ -78,11 +76,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     unitSelect.onchange = updateSelection;
     storySelect.onchange = updateSelection;
 
-    // Admin Toggle
     adminBtn.onclick = () => adminModal.style.display = 'block';
     closeAdminBtn.onclick = () => adminModal.style.display = 'none';
 
-    // Authorized Request Helper
     async function authorizedPost(action, payload) {
         return fetch(GA_BACKEND_URL, {
             method: 'POST', mode: 'cors',
@@ -99,7 +95,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const label = document.getElementById('new-unit-label').value;
         const res = await authorizedPost('add_unit', { value: val, label: label });
         const result = await res.json();
-        if (result.status === 'success') { alert('Unit added!'); loadProjectConfig(); }
+        if (result.status === 'success') { alert('Unit added!'); await loadProjectConfig(); }
     };
 
     document.getElementById('add-story-btn').onclick = async () => {
@@ -107,7 +103,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const label = document.getElementById('new-story-label').value;
         const res = await authorizedPost('add_story', { value: val, label: label });
         const result = await res.json();
-        if (result.status === 'success') { alert('Story added!'); loadProjectConfig(); }
+        if (result.status === 'success') { alert('Story added!'); await loadProjectConfig(); }
     };
 
     document.getElementById('upload-map-btn').onclick = async () => {
@@ -119,7 +115,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 unit: unitSelect.value, story: storySelect.value, imageBlob: e.target.result
             });
             const result = await res.json();
-            if (result.status === 'success') { alert('Uploaded!'); updateSelection(); }
+            if (result.status === 'success') { alert('Uploaded!'); await loadProjectConfig(); }
         };
         reader.readAsDataURL(file);
     };
@@ -127,19 +123,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     syncBtn.onclick = async () => {
         const defects = JSON.parse(localStorage.getItem('pending_defects') || '[]');
         if (defects.length === 0) return alert('No pending defects');
-        syncBtn.disabled = true;
-        syncBtn.textContent = 'Syncing...';
+        syncBtn.disabled = true; syncBtn.textContent = 'Syncing...';
         try {
             const res = await authorizedPost('sync_defects', { defects });
             const result = await res.json();
-            if (result.status === 'success') {
-                alert('Synced!');
-                localStorage.removeItem('pending_defects');
-                updateSelection();
-            }
+            if (result.status === 'success') { alert('Synced!'); localStorage.removeItem('pending_defects'); updateSelection(); }
         } catch (err) { alert('Sync failed'); }
-        syncBtn.disabled = false;
-        syncBtn.textContent = 'Sync to GA';
+        syncBtn.disabled = false; syncBtn.textContent = 'Sync to GA';
     };
 
     mapContainer.onclick = (e) => {
