@@ -1,18 +1,62 @@
 let currentPinPos = null;
 let compressedPhotoData = null;
 
+const GA_BACKEND_URL = 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE';
+
 // Initial setup
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     const mapContainer = document.getElementById('map-container');
     const floorplanImg = document.getElementById('floorplan-img');
-    const unitSelect = document.getElementById('unit-type-select');
-    const storySelect = document.getElementById('story-select');
     const unitDisplay = document.getElementById('current-unit-display');
     const floorDisplay = document.getElementById('current-floor-display');
     const pinsContainer = document.getElementById('pins-container');
+    const modal = document.getElementById('defect-modal');
+    const photoInput = document.getElementById('defect-photo');
+    const previewImg = document.getElementById('preview-img');
+    const saveBtn = document.getElementById('save-defect-btn');
+    const cancelBtn = document.getElementById('cancel-defect-btn');
     
     const backBtn = document.getElementById('back-btn');
     backBtn.onclick = () => window.location.href = 'index.html';
+
+    // 1. Fetch Config (from cache first, then network)
+    await loadProjectConfig();
+
+    async function loadProjectConfig() {
+        // Try to load from Cache first
+        const cachedConfig = localStorage.getItem('project_config');
+        if (cachedConfig) {
+            renderSelectors(JSON.parse(cachedConfig));
+        }
+
+        // Then try to fetch fresh from Backend
+        if (GA_BACKEND_URL !== 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE') {
+            try {
+                const response = await fetch(GA_BACKEND_URL, {
+                    method: 'POST',
+                    mode: 'cors',
+                    body: JSON.stringify({ action: 'get_config' })
+                });
+                const result = await response.json();
+                if (result.status === 'success') {
+                    localStorage.setItem('project_config', JSON.stringify(result.config));
+                    renderSelectors(result.config);
+                }
+            } catch (err) {
+                console.warn('Could not fetch fresh config, using cache:', err);
+            }
+        }
+    }
+
+    function renderSelectors(config) {
+        if (config.unitTypes && config.unitTypes.length > 0) {
+            unitSelect.innerHTML = config.unitTypes.map(u => `<option value="${u.value}">${u.label}</option>`).join('');
+        }
+        if (config.stories && config.stories.length > 0) {
+            storySelect.innerHTML = config.stories.map(s => `<option value="${s.value}">${s.label}</option>`).join('');
+        }
+        updateSelection();
+    }
 
     // Handle selection changes
     function updateSelection() {
@@ -22,26 +66,27 @@ document.addEventListener('DOMContentLoaded', () => {
         unitDisplay.textContent = unit;
         floorDisplay.textContent = story;
         
-        // Clear pins when switching maps
         pinsContainer.innerHTML = '';
-        
-        // Update floorplan image path based on selection
-        // Logic: assets/Type-A_L1.png
-        // For now, it will fallback to the placeholder if the file doesn't exist
         floorplanImg.src = `assets/${unit}_${story}.png`;
         floorplanImg.onerror = () => {
             floorplanImg.src = 'assets/floorplan-placeholder.png';
         };
 
-        // Reload existing pins for this specific unit/story combo
         loadPinsForCurrentView(unit, story);
     }
 
     unitSelect.addEventListener('change', updateSelection);
     storySelect.addEventListener('change', updateSelection);
 
-    // Initial load
-    updateSelection();
+    // Handle map click
+    mapContainer.addEventListener('click', (e) => {
+        const rect = mapContainer.getBoundingClientRect();
+        const xPercent = ((e.clientX - rect.left) / rect.width) * 100;
+        const yPercent = ((e.clientY - rect.top) / rect.height) * 100;
+        
+        currentPinPos = { x: xPercent, y: yPercent };
+        modal.style.display = 'block';
+    });
 
     // ... rest of existing DOMContentLoaded logic ...
 
