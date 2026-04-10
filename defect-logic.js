@@ -7,6 +7,8 @@ const GA_BACKEND_URL = 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE';
 document.addEventListener('DOMContentLoaded', async () => {
     const mapContainer = document.getElementById('map-container');
     const floorplanImg = document.getElementById('floorplan-img');
+    const unitSelect = document.getElementById('unit-type-select');
+    const storySelect = document.getElementById('story-select');
     const unitDisplay = document.getElementById('current-unit-display');
     const floorDisplay = document.getElementById('current-floor-display');
     const pinsContainer = document.getElementById('pins-container');
@@ -15,6 +17,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const previewImg = document.getElementById('preview-img');
     const saveBtn = document.getElementById('save-defect-btn');
     const cancelBtn = document.getElementById('cancel-defect-btn');
+    const syncBtn = document.getElementById('sync-btn');
     
     const backBtn = document.getElementById('back-btn');
     backBtn.onclick = () => window.location.href = 'index.html';
@@ -23,13 +26,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadProjectConfig();
 
     async function loadProjectConfig() {
-        // Try to load from Cache first
         const cachedConfig = localStorage.getItem('project_config');
         if (cachedConfig) {
             renderSelectors(JSON.parse(cachedConfig));
         }
 
-        // Then try to fetch fresh from Backend
         if (GA_BACKEND_URL !== 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE') {
             try {
                 const response = await fetch(GA_BACKEND_URL, {
@@ -58,7 +59,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         updateSelection();
     }
 
-    // Handle selection changes
     function updateSelection() {
         const unit = unitSelect.value;
         const story = storySelect.value;
@@ -78,7 +78,51 @@ document.addEventListener('DOMContentLoaded', async () => {
     unitSelect.addEventListener('change', updateSelection);
     storySelect.addEventListener('change', updateSelection);
 
-    // Handle map click
+    syncBtn.addEventListener('click', async () => {
+        const defects = JSON.parse(localStorage.getItem('pending_defects') || '[]');
+        if (defects.length === 0) {
+            alert('No pending defects to sync.');
+            return;
+        }
+
+        if (GA_BACKEND_URL === 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE') {
+            alert('Please configure your GA_BACKEND_URL in defect-logic.js first.');
+            return;
+        }
+
+        syncBtn.disabled = true;
+        syncBtn.textContent = 'Syncing...';
+
+        try {
+            const username = localStorage.getItem('isLoggedIn') || 'unknown';
+            const response = await fetch(GA_BACKEND_URL, {
+                method: 'POST',
+                mode: 'cors',
+                body: JSON.stringify({
+                    action: 'sync_defects',
+                    username: username,
+                    defects: defects
+                })
+            });
+
+            const result = await response.json();
+            if (result.status === 'success') {
+                alert(`Successfully synced ${defects.length} defects!`);
+                localStorage.removeItem('pending_defects');
+                pinsContainer.innerHTML = '';
+                loadPinsForCurrentView(unitSelect.value, storySelect.value);
+            } else {
+                alert('Sync failed: ' + result.message);
+            }
+        } catch (err) {
+            console.error('Sync Error:', err);
+            alert('Sync failed. Please check your connection.');
+        } finally {
+            syncBtn.disabled = false;
+            syncBtn.textContent = 'Sync to GA';
+        }
+    });
+
     mapContainer.addEventListener('click', (e) => {
         const rect = mapContainer.getBoundingClientRect();
         const xPercent = ((e.clientX - rect.left) / rect.width) * 100;
@@ -88,9 +132,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         modal.style.display = 'block';
     });
 
-    // ... rest of existing DOMContentLoaded logic ...
-
-    // Handle image file selection & compression
     photoInput.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (file) {
@@ -116,10 +157,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             timestamp: new Date().toISOString()
         });
 
-        // Add pin to UI
         addPinToUI(currentPinPos);
-        
-        // Reset and close
         closeModal();
     });
 
@@ -134,7 +172,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 });
 
-// Helper: Resize and Compress Image using Canvas
 function compressImage(file, maxDimension, quality, callback) {
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -160,8 +197,6 @@ function compressImage(file, maxDimension, quality, callback) {
             canvas.height = height;
             const ctx = canvas.getContext('2d');
             ctx.drawImage(img, 0, 0, width, height);
-            
-            // Output as JPEG with specified quality
             callback(canvas.toDataURL('image/jpeg', quality));
         };
         img.src = e.target.result;
@@ -179,14 +214,12 @@ function loadPinsForCurrentView(unit, story) {
 }
 
 function saveDefectLocally(defect) {
-    // Include the current view info
     defect.unit = document.getElementById('unit-type-select').value;
     defect.story = document.getElementById('story-select').value;
 
     const defects = JSON.parse(localStorage.getItem('pending_defects') || '[]');
     defects.push(defect);
     localStorage.setItem('pending_defects', JSON.stringify(defects));
-    console.log('Defect saved locally:', defect);
 }
 
 function addPinToUI(pos) {
