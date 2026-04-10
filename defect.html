@@ -61,7 +61,26 @@
     </header>
 
     <div class="main-content" style="padding: 20px;">
-        <h3>Unit: <span id="current-unit">101</span> | Floor: <span id="current-floor">L1</span></h3>
+        <div class="selectors" style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
+            <div class="input-group" style="flex: 1; min-width: 150px; margin-bottom: 0;">
+                <label>Unit Type</label>
+                <select id="unit-type-select">
+                    <option value="Type-A">Type A (Studio)</option>
+                    <option value="Type-B">Type B (2-Bedroom)</option>
+                    <option value="Type-C">Type C (Penthouse)</option>
+                </select>
+            </div>
+            <div class="input-group" style="flex: 1; min-width: 150px; margin-bottom: 0;">
+                <label>Story / Floor</label>
+                <select id="story-select">
+                    <option value="L1">Level 1</option>
+                    <option value="L2">Level 2</option>
+                    <option value="L3">Level 3</option>
+                </select>
+            </div>
+        </div>
+
+        <h3>Unit: <span id="current-unit-display">Type-A</span> | Floor: <span id="current-floor-display">L1</span></h3>
         <p>Click on the map to report a defect.</p>
         
         <div class="floorplan-container" id="map-container">

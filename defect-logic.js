@@ -4,21 +4,46 @@ let compressedPhotoData = null;
 // Initial setup
 document.addEventListener('DOMContentLoaded', () => {
     const mapContainer = document.getElementById('map-container');
-    const modal = document.getElementById('defect-modal');
-    const photoInput = document.getElementById('defect-photo');
-    const previewImg = document.getElementById('preview-img');
-    const saveBtn = document.getElementById('save-defect-btn');
-    const cancelBtn = document.getElementById('cancel-defect-btn');
+    const floorplanImg = document.getElementById('floorplan-img');
+    const unitSelect = document.getElementById('unit-type-select');
+    const storySelect = document.getElementById('story-select');
+    const unitDisplay = document.getElementById('current-unit-display');
+    const floorDisplay = document.getElementById('current-floor-display');
+    const pinsContainer = document.getElementById('pins-container');
+    
+    const backBtn = document.getElementById('back-btn');
+    backBtn.onclick = () => window.location.href = 'index.html';
 
-    // Handle map click to drop a pin and open modal
-    mapContainer.addEventListener('click', (e) => {
-        const rect = mapContainer.getBoundingClientRect();
-        const xPercent = ((e.clientX - rect.left) / rect.width) * 100;
-        const yPercent = ((e.clientY - rect.top) / rect.height) * 100;
+    // Handle selection changes
+    function updateSelection() {
+        const unit = unitSelect.value;
+        const story = storySelect.value;
         
-        currentPinPos = { x: xPercent, y: yPercent };
-        modal.style.display = 'block';
-    });
+        unitDisplay.textContent = unit;
+        floorDisplay.textContent = story;
+        
+        // Clear pins when switching maps
+        pinsContainer.innerHTML = '';
+        
+        // Update floorplan image path based on selection
+        // Logic: assets/Type-A_L1.png
+        // For now, it will fallback to the placeholder if the file doesn't exist
+        floorplanImg.src = `assets/${unit}_${story}.png`;
+        floorplanImg.onerror = () => {
+            floorplanImg.src = 'assets/floorplan-placeholder.png';
+        };
+
+        // Reload existing pins for this specific unit/story combo
+        loadPinsForCurrentView(unit, story);
+    }
+
+    unitSelect.addEventListener('change', updateSelection);
+    storySelect.addEventListener('change', updateSelection);
+
+    // Initial load
+    updateSelection();
+
+    // ... rest of existing DOMContentLoaded logic ...
 
     // Handle image file selection & compression
     photoInput.addEventListener('change', (e) => {
@@ -99,8 +124,20 @@ function compressImage(file, maxDimension, quality, callback) {
     reader.readAsDataURL(file);
 }
 
+function loadPinsForCurrentView(unit, story) {
+    const defects = JSON.parse(localStorage.getItem('pending_defects') || '[]');
+    defects.forEach(defect => {
+        if (defect.unit === unit && defect.story === story) {
+            addPinToUI(defect.position);
+        }
+    });
+}
+
 function saveDefectLocally(defect) {
-    // Basic local storage for now (IndexedDB is better for production)
+    // Include the current view info
+    defect.unit = document.getElementById('unit-type-select').value;
+    defect.story = document.getElementById('story-select').value;
+
     const defects = JSON.parse(localStorage.getItem('pending_defects') || '[]');
     defects.push(defect);
     localStorage.setItem('pending_defects', JSON.stringify(defects));
