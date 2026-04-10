@@ -10,22 +10,21 @@ document.addEventListener('DOMContentLoaded', () => {
     // REPLACE this with your actual Google Apps Script Web App URL
     const GA_BACKEND_URL = 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE';
 
-    // Check for existing login state on load
     checkLoginState();
 
     function checkLoginState() {
-        const loggedInUser = localStorage.getItem('isLoggedIn');
-        if (loggedInUser) {
-            showDashboard(loggedInUser);
+        const user = JSON.parse(localStorage.getItem('user_session'));
+        if (user) {
+            showDashboard(user);
         } else {
             showLogin();
         }
     }
 
-    function showDashboard(username) {
+    function showDashboard(user) {
         loginContainer.style.display = 'none';
         dashboardContainer.style.display = 'block';
-        userDisplay.textContent = username;
+        userDisplay.textContent = user.name || user.username;
         
         // Add Start button if it doesn't exist
         if (!document.getElementById('start-tracking-btn')) {
@@ -45,46 +44,36 @@ document.addEventListener('DOMContentLoaded', () => {
 
     loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        
         const username = document.getElementById('username').value;
         const password = document.getElementById('password').value;
 
         loginBtn.disabled = true;
         loginBtn.textContent = 'Logging in...';
-        messageDiv.className = 'message';
         messageDiv.style.display = 'none';
 
         try {
-            if (GA_BACKEND_URL === 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE') {
-                // Mock response
-                console.log('Mock login attempt:', { username, password });
-                await new Promise(resolve => setTimeout(resolve, 1500));
-                
-                if (username === 'admin') {
-                    handleLoginSuccess(username);
-                } else {
-                    showMessage('Invalid credentials. (Mock Mode: use "admin")', 'error');
-                }
-            } else {
-                // Actual GA connection
-                const response = await fetch(GA_BACKEND_URL, {
-                    method: 'POST',
-                    mode: 'cors',
-                    cache: 'no-cache',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'login', username, password }),
-                });
+            const response = await fetch(GA_BACKEND_URL, {
+                method: 'POST',
+                mode: 'cors',
+                body: JSON.stringify({ action: 'login', username, password }),
+            });
 
-                const result = await response.json();
-                if (result.status === 'success') {
-                    handleLoginSuccess(username);
-                } else {
-                    showMessage(result.message || 'Login failed.', 'error');
-                }
+            const result = await response.json();
+            if (result.status === 'success') {
+                // Security: Store session info (including password for API auth)
+                const session = { 
+                    username: result.user.username, 
+                    password: password, // Required for subsequent authorized requests
+                    name: result.user.name,
+                    role: result.user.role 
+                };
+                localStorage.setItem('user_session', JSON.stringify(session));
+                showDashboard(session);
+            } else {
+                showMessage(result.message || 'Login failed.', 'error');
             }
         } catch (error) {
-            console.error('Login error:', error);
-            showMessage('Connection error. Please try again.', 'error');
+            showMessage('Connection error.', 'error');
         } finally {
             loginBtn.disabled = false;
             loginBtn.textContent = 'Login';
@@ -92,14 +81,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     logoutBtn.addEventListener('click', () => {
-        localStorage.removeItem('isLoggedIn');
+        localStorage.removeItem('user_session');
         showLogin();
     });
-
-    function handleLoginSuccess(username) {
-        localStorage.setItem('isLoggedIn', username);
-        showDashboard(username);
-    }
 
     function showMessage(text, type) {
         messageDiv.textContent = text;

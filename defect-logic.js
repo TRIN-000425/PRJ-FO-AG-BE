@@ -3,8 +3,14 @@ let compressedPhotoData = null;
 
 const GA_BACKEND_URL = 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE';
 
-// Initial setup
 document.addEventListener('DOMContentLoaded', async () => {
+    // Session Verification
+    const session = JSON.parse(localStorage.getItem('user_session'));
+    if (!session) {
+        window.location.href = 'index.html';
+        return;
+    }
+
     const mapContainer = document.getElementById('map-container');
     const floorplanImg = document.getElementById('floorplan-img');
     const unitSelect = document.getElementById('unit-type-select');
@@ -19,31 +25,28 @@ document.addEventListener('DOMContentLoaded', async () => {
     const cancelBtn = document.getElementById('cancel-defect-btn');
     const syncBtn = document.getElementById('sync-btn');
     
-    // Admin Selectors
+    // Admin Security: Hide Project Setup if not Admin
     const adminBtn = document.getElementById('admin-btn');
     const adminModal = document.getElementById('admin-modal');
     const closeAdminBtn = document.getElementById('close-admin-btn');
-    const addUnitBtn = document.getElementById('add-unit-btn');
-    const addStoryBtn = document.getElementById('add-story-btn');
-    const uploadMapBtn = document.getElementById('upload-map-btn');
+    if (session.role !== 'Admin') {
+        adminBtn.style.display = 'none';
+    }
 
     const backBtn = document.getElementById('back-btn');
     backBtn.onclick = () => window.location.href = 'index.html';
 
-    // 1. Fetch Config (from cache first, then network)
+    // 1. Fetch Config
     await loadProjectConfig();
 
     async function loadProjectConfig() {
         const cachedConfig = localStorage.getItem('project_config');
-        if (cachedConfig) {
-            renderSelectors(JSON.parse(cachedConfig));
-        }
+        if (cachedConfig) renderSelectors(JSON.parse(cachedConfig));
 
         if (GA_BACKEND_URL !== 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE') {
             try {
                 const response = await fetch(GA_BACKEND_URL, {
-                    method: 'POST',
-                    mode: 'cors',
+                    method: 'POST', mode: 'cors',
                     body: JSON.stringify({ action: 'get_config' })
                 });
                 const result = await response.json();
@@ -51,242 +54,135 @@ document.addEventListener('DOMContentLoaded', async () => {
                     localStorage.setItem('project_config', JSON.stringify(result.config));
                     renderSelectors(result.config);
                 }
-            } catch (err) {
-                console.warn('Could not fetch fresh config, using cache:', err);
-            }
+            } catch (err) { console.warn('Offline: Using cached config'); }
         }
     }
 
     function renderSelectors(config) {
-        if (config.unitTypes && config.unitTypes.length > 0) {
-            unitSelect.innerHTML = config.unitTypes.map(u => `<option value="${u.value}">${u.label}</option>`).join('');
-        }
-        if (config.stories && config.stories.length > 0) {
-            storySelect.innerHTML = config.stories.map(s => `<option value="${s.value}">${s.label}</option>`).join('');
-        }
+        if (config.unitTypes) unitSelect.innerHTML = config.unitTypes.map(u => `<option value="${u.value}">${u.label}</option>`).join('');
+        if (config.stories) storySelect.innerHTML = config.stories.map(s => `<option value="${s.value}">${s.label}</option>`).join('');
         updateSelection();
     }
 
     function updateSelection() {
         const unit = unitSelect.value;
         const story = storySelect.value;
-        
         unitDisplay.textContent = unit;
         floorDisplay.textContent = story;
-        
         pinsContainer.innerHTML = '';
-        
-        // We try to load from Drive/Direct link if available, fallback to assets/
-        // For now we use the naming convention
         floorplanImg.src = `assets/${unit}_${story}.png`;
-        floorplanImg.onerror = () => {
-            floorplanImg.src = 'assets/floorplan-placeholder.png';
-        };
-
+        floorplanImg.onerror = () => { floorplanImg.src = 'assets/floorplan-placeholder.png'; };
         loadPinsForCurrentView(unit, story);
     }
 
-    unitSelect.addEventListener('change', updateSelection);
-    storySelect.addEventListener('change', updateSelection);
+    unitSelect.onchange = updateSelection;
+    storySelect.onchange = updateSelection;
 
     // Admin Toggle
     adminBtn.onclick = () => adminModal.style.display = 'block';
     closeAdminBtn.onclick = () => adminModal.style.display = 'none';
 
-    // Add Unit Type logic
-    addUnitBtn.onclick = async () => {
+    // Authorized Request Helper
+    async function authorizedPost(action, payload) {
+        return fetch(GA_BACKEND_URL, {
+            method: 'POST', mode: 'cors',
+            body: JSON.stringify({
+                action,
+                auth: { username: session.username, password: session.password },
+                ...payload
+            })
+        });
+    }
+
+    document.getElementById('add-unit-btn').onclick = async () => {
         const val = document.getElementById('new-unit-val').value;
         const label = document.getElementById('new-unit-label').value;
-        if (!val || !label) return alert('Fill both fields');
-        
-        const res = await fetch(GA_BACKEND_URL, {
-            method: 'POST', mode: 'cors',
-            body: JSON.stringify({ action: 'add_unit', value: val, label: label })
-        });
+        const res = await authorizedPost('add_unit', { value: val, label: label });
         const result = await res.json();
-        if (result.status === 'success') {
-            alert('Unit added! Fetching fresh config...');
-            await loadProjectConfig();
-        }
+        if (result.status === 'success') { alert('Unit added!'); loadProjectConfig(); }
     };
 
-    // Add Story logic
-    addStoryBtn.onclick = async () => {
+    document.getElementById('add-story-btn').onclick = async () => {
         const val = document.getElementById('new-story-val').value;
         const label = document.getElementById('new-story-label').value;
-        if (!val || !label) return alert('Fill both fields');
-        
-        const res = await fetch(GA_BACKEND_URL, {
-            method: 'POST', mode: 'cors',
-            body: JSON.stringify({ action: 'add_story', value: val, label: label })
-        });
+        const res = await authorizedPost('add_story', { value: val, label: label });
         const result = await res.json();
-        if (result.status === 'success') {
-            alert('Story added! Fetching fresh config...');
-            await loadProjectConfig();
-        }
+        if (result.status === 'success') { alert('Story added!'); loadProjectConfig(); }
     };
 
-    // Upload Floor Plan PNG
-    uploadMapBtn.onclick = async () => {
-        const fileInput = document.getElementById('map-upload-input');
-        const file = fileInput.files[0];
-        if (!file) return alert('Select a PNG file');
-        
+    document.getElementById('upload-map-btn').onclick = async () => {
+        const file = document.getElementById('map-upload-input').files[0];
+        if (!file) return alert('Select PNG');
         const reader = new FileReader();
         reader.onload = async (e) => {
-            uploadMapBtn.disabled = true;
-            uploadMapBtn.textContent = 'Uploading...';
-            
-            try {
-                const res = await fetch(GA_BACKEND_URL, {
-                    method: 'POST', mode: 'cors',
-                    body: JSON.stringify({
-                        action: 'upload_map',
-                        unit: unitSelect.value,
-                        story: storySelect.value,
-                        imageBlob: e.target.result
-                    })
-                });
-                const result = await res.json();
-                if (result.status === 'success') {
-                    alert('Floor plan uploaded to Google Drive!');
-                    // Note: Browser caching might prevent immediate image update
-                    // We can force a refresh by adding a timestamp
-                    floorplanImg.src = result.url + "&t=" + new Date().getTime();
-                } else {
-                    alert('Upload failed: ' + result.message);
-                }
-            } catch (err) {
-                alert('Upload error. Check console.');
-            } finally {
-                uploadMapBtn.disabled = false;
-                uploadMapBtn.textContent = 'Upload PNG to Drive';
-            }
+            const res = await authorizedPost('upload_map', {
+                unit: unitSelect.value, story: storySelect.value, imageBlob: e.target.result
+            });
+            const result = await res.json();
+            if (result.status === 'success') { alert('Uploaded!'); updateSelection(); }
         };
         reader.readAsDataURL(file);
     };
 
-    syncBtn.addEventListener('click', async () => {
+    syncBtn.onclick = async () => {
         const defects = JSON.parse(localStorage.getItem('pending_defects') || '[]');
-        if (defects.length === 0) {
-            alert('No pending defects to sync.');
-            return;
-        }
-
-        if (GA_BACKEND_URL === 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE') {
-            alert('Please configure your GA_BACKEND_URL in defect-logic.js first.');
-            return;
-        }
-
+        if (defects.length === 0) return alert('No pending defects');
         syncBtn.disabled = true;
         syncBtn.textContent = 'Syncing...';
-
         try {
-            const username = localStorage.getItem('isLoggedIn') || 'unknown';
-            const response = await fetch(GA_BACKEND_URL, {
-                method: 'POST',
-                mode: 'cors',
-                body: JSON.stringify({
-                    action: 'sync_defects',
-                    username: username,
-                    defects: defects
-                })
-            });
-
-            const result = await response.json();
+            const res = await authorizedPost('sync_defects', { defects });
+            const result = await res.json();
             if (result.status === 'success') {
-                alert(`Successfully synced ${defects.length} defects!`);
+                alert('Synced!');
                 localStorage.removeItem('pending_defects');
-                pinsContainer.innerHTML = '';
-                loadPinsForCurrentView(unitSelect.value, storySelect.value);
-            } else {
-                alert('Sync failed: ' + result.message);
+                updateSelection();
             }
-        } catch (err) {
-            console.error('Sync Error:', err);
-            alert('Sync failed. Please check your connection.');
-        } finally {
-            syncBtn.disabled = false;
-            syncBtn.textContent = 'Sync to GA';
-        }
-    });
+        } catch (err) { alert('Sync failed'); }
+        syncBtn.disabled = false;
+        syncBtn.textContent = 'Sync to GA';
+    };
 
-    mapContainer.addEventListener('click', (e) => {
+    mapContainer.onclick = (e) => {
         const rect = mapContainer.getBoundingClientRect();
-        const xPercent = ((e.clientX - rect.left) / rect.width) * 100;
-        const yPercent = ((e.clientY - rect.top) / rect.height) * 100;
-        
-        currentPinPos = { x: xPercent, y: yPercent };
+        currentPinPos = {
+            x: ((e.clientX - rect.left) / rect.width) * 100,
+            y: ((e.clientY - rect.top) / rect.height) * 100
+        };
         modal.style.display = 'block';
-    });
+    };
 
-    photoInput.addEventListener('change', (e) => {
+    photoInput.onchange = (e) => {
         const file = e.target.files[0];
-        if (file) {
-            compressImage(file, 1024, 0.7, (base64) => {
-                compressedPhotoData = base64;
-                previewImg.src = base64;
-                previewImg.style.display = 'block';
-            });
-        }
-    });
-
-    saveBtn.addEventListener('click', () => {
-        const desc = document.getElementById('defect-desc').value;
-        if (!desc || !compressedPhotoData) {
-            alert('Please add a description and a photo.');
-            return;
-        }
-
-        saveDefectLocally({
-            description: desc,
-            photo: compressedPhotoData,
-            position: currentPinPos,
-            timestamp: new Date().toISOString()
+        if (file) compressImage(file, 1024, 0.7, (base) => {
+            compressedPhotoData = base;
+            previewImg.src = base; previewImg.style.display = 'block';
         });
+    };
 
+    saveBtn.onclick = () => {
+        const desc = document.getElementById('defect-desc').value;
+        if (!desc || !compressedPhotoData) return alert('Missing info');
+        saveDefectLocally({ description: desc, photo: compressedPhotoData, position: currentPinPos, timestamp: new Date().toISOString() });
         addPinToUI(currentPinPos);
         closeModal();
-    });
+    };
 
-    cancelBtn.addEventListener('click', closeModal);
-    
-    function closeModal() {
-        modal.style.display = 'none';
-        document.getElementById('defect-desc').value = '';
-        photoInput.value = '';
-        previewImg.style.display = 'none';
-        compressedPhotoData = null;
-    }
+    cancelBtn.onclick = closeModal;
+    function closeModal() { modal.style.display = 'none'; document.getElementById('defect-desc').value = ''; previewImg.style.display = 'none'; compressedPhotoData = null; }
 });
 
-function compressImage(file, maxDimension, quality, callback) {
+function compressImage(file, max, qual, cb) {
     const reader = new FileReader();
     reader.onload = (e) => {
         const img = new Image();
         img.onload = () => {
             const canvas = document.createElement('canvas');
-            let width = img.width;
-            let height = img.height;
-
-            if (width > height) {
-                if (width > maxDimension) {
-                    height *= maxDimension / width;
-                    width = maxDimension;
-                }
-            } else {
-                if (height > maxDimension) {
-                    width *= maxDimension / height;
-                    height = maxDimension;
-                }
-            }
-
-            canvas.width = width;
-            canvas.height = height;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(img, 0, 0, width, height);
-            callback(canvas.toDataURL('image/jpeg', quality));
+            let w = img.width, h = img.height;
+            if (w > h) { if (w > max) { h *= max/w; w = max; } }
+            else { if (h > max) { w *= max/h; h = max; } }
+            canvas.width = w; canvas.height = h;
+            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+            cb(canvas.toDataURL('image/jpeg', qual));
         };
         img.src = e.target.result;
     };
@@ -295,26 +191,20 @@ function compressImage(file, maxDimension, quality, callback) {
 
 function loadPinsForCurrentView(unit, story) {
     const defects = JSON.parse(localStorage.getItem('pending_defects') || '[]');
-    defects.forEach(defect => {
-        if (defect.unit === unit && defect.story === story) {
-            addPinToUI(defect.position);
-        }
-    });
+    defects.forEach(d => { if (d.unit === unit && d.story === story) addPinToUI(d.position); });
 }
 
-function saveDefectLocally(defect) {
-    defect.unit = document.getElementById('unit-type-select').value;
-    defect.story = document.getElementById('story-select').value;
-
-    const defects = JSON.parse(localStorage.getItem('pending_defects') || '[]');
-    defects.push(defect);
-    localStorage.setItem('pending_defects', JSON.stringify(defects));
+function saveDefectLocally(d) {
+    d.unit = document.getElementById('unit-type-select').value;
+    d.story = document.getElementById('story-select').value;
+    const all = JSON.parse(localStorage.getItem('pending_defects') || '[]');
+    all.push(d);
+    localStorage.setItem('pending_defects', JSON.stringify(all));
 }
 
 function addPinToUI(pos) {
     const pin = document.createElement('div');
     pin.className = 'pin';
-    pin.style.left = pos.x + '%';
-    pin.style.top = pos.y + '%';
+    pin.style.left = pos.x + '%'; pin.style.top = pos.y + '%';
     document.getElementById('pins-container').appendChild(pin);
 }
