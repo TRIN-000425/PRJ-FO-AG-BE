@@ -6,15 +6,31 @@ document.addEventListener('DOMContentLoaded', () => {
     const logoutBtn = document.getElementById('logout-btn');
     const messageDiv = document.getElementById('message');
     const userDisplay = document.getElementById('user-display');
+    const otpGroup = document.getElementById('otp-group');
+    const otpInput = document.getElementById('otp');
+    const passwordGroup = document.getElementById('password-group');
 
     // REPLACE this with your actual Google Apps Script Web App URL
     const GA_BACKEND_URL = 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE';
+    
+    let isOtpStep = false;
 
     checkLoginState();
 
+    // 1. Permanent Device Fingerprint
+    function getDeviceId() {
+        let deviceId = localStorage.getItem('device_id');
+        if (!deviceId) {
+            // Generate a random UUID-like string for this device
+            deviceId = 'dev-' + Math.random().toString(36).substr(2, 9) + '-' + Date.now();
+            localStorage.setItem('device_id', deviceId);
+        }
+        return deviceId;
+    }
+
     function checkLoginState() {
         const user = JSON.parse(localStorage.getItem('user_session'));
-        if (user) {
+        if (user && user.deviceToken) { // Verify we have the secure token, not just an old session
             showDashboard(user);
         } else {
             showLogin();
@@ -26,7 +42,6 @@ document.addEventListener('DOMContentLoaded', () => {
         dashboardContainer.style.display = 'block';
         userDisplay.textContent = user.name || user.username;
         
-        // Add Start button if it doesn't exist
         if (!document.getElementById('start-tracking-btn')) {
             const startBtn = document.createElement('button');
             startBtn.id = 'start-tracking-btn';
@@ -46,42 +61,76 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault();
         const username = document.getElementById('username').value;
         const password = document.getElementById('password').value;
+        const deviceId = getDeviceId();
 
         loginBtn.disabled = true;
-        loginBtn.textContent = 'Logging in...';
+        loginBtn.textContent = 'Connecting...';
         messageDiv.style.display = 'none';
+
+        // 2. Multi-Step Payload
+        const payload = { action: 'login', username, password, deviceId };
+        if (isOtpStep) {
+            payload.action = 'verify_otp';
+            payload.otp = otpInput.value;
+            if (!payload.otp) {
+                loginBtn.disabled = false;
+                loginBtn.textContent = 'Verify OTP';
+                return showMessage('Please enter the 6-digit OTP sent to your email.', 'error');
+            }
+        }
 
         try {
             const response = await fetch(GA_BACKEND_URL, {
-                method: 'POST',
-                mode: 'cors',
-                body: JSON.stringify({ action: 'login', username, password }),
+                method: 'POST', mode: 'cors',
+                body: JSON.stringify(payload),
             });
 
             const result = await response.json();
-            if (result.status === 'success') {
-                // Security: Store session info (including password for API auth)
+            
+            // 3. Handle Backend States
+            if (result.status === 'requires_otp') {
+                isOtpStep = true;
+                otpGroup.style.display = 'block';
+                passwordGroup.style.display = 'none'; // Hide password input
+                document.getElementById('username').readOnly = true; // Lock username
+                loginBtn.textContent = 'Verify OTP';
+                showMessage(result.message, 'success'); // Shows "OTP Sent to..."
+                
+            } else if (result.status === 'success') {
+                // SECURITY AUDIT FIX: NO PLAINTEXT PASSWORDS!
+                // We only store the server-generated deviceToken.
                 const session = { 
                     username: result.user.username, 
-                    password: password, // Required for subsequent authorized requests
+                    deviceId: deviceId,
+                    deviceToken: result.deviceToken,
                     name: result.user.name,
                     role: result.user.role 
                 };
                 localStorage.setItem('user_session', JSON.stringify(session));
                 showDashboard(session);
+                
             } else {
                 showMessage(result.message || 'Login failed.', 'error');
             }
         } catch (error) {
-            showMessage('Connection error.', 'error');
+            showMessage('Connection error. Is GA_BACKEND_URL correct?', 'error');
         } finally {
-            loginBtn.disabled = false;
-            loginBtn.textContent = 'Login';
+            if (!isOtpStep || (isOtpStep && loginBtn.disabled)) {
+                loginBtn.disabled = false;
+                loginBtn.textContent = isOtpStep ? 'Verify OTP' : 'Login';
+            }
         }
     });
 
     logoutBtn.addEventListener('click', () => {
-        localStorage.removeItem('user_session');
+        localStorage.removeItem('user_session'); // Does NOT remove device_id
+        isOtpStep = false;
+        otpGroup.style.display = 'none';
+        passwordGroup.style.display = 'block';
+        document.getElementById('username').readOnly = false;
+        otpInput.value = '';
+        document.getElementById('password').value = '';
+        loginBtn.textContent = 'Login';
         showLogin();
     });
 

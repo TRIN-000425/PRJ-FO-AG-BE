@@ -84,7 +84,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             method: 'POST', mode: 'cors',
             body: JSON.stringify({
                 action,
-                auth: { username: session.username, password: session.password },
+                auth: { 
+                    username: session.username, 
+                    deviceId: session.deviceId, 
+                    deviceToken: session.deviceToken 
+                },
                 ...payload
             })
         });
