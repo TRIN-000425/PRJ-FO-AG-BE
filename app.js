@@ -75,7 +75,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!payload.otp) {
                 loginBtn.disabled = false;
                 loginBtn.textContent = 'Verify OTP';
-                return showMessage('Please enter the 6-digit OTP sent to your email.', 'error');
+                return showMessage('Please enter the OTP provided by your administrator.', 'error');
             }
         }
 
@@ -94,7 +94,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 passwordGroup.style.display = 'none'; // Hide password input
                 document.getElementById('username').readOnly = true; // Lock username
                 loginBtn.textContent = 'Verify OTP';
-                showMessage(result.message, 'success'); // Shows "OTP Sent to..."
+                
+                // Show the message which contains the deviceId to send to the admin
+                showMessage(result.message, 'error'); 
+                document.getElementById('otp-instruction').innerText = `Device ID: ${deviceId}`;
                 
             } else if (result.status === 'success') {
                 // SECURITY AUDIT FIX: NO PLAINTEXT PASSWORDS!
