@@ -48,9 +48,23 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
+    function sanitizeHTML(str) {
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+
     function renderSelectors(config) {
-        if (config.unitTypes) unitSelect.innerHTML = config.unitTypes.map(u => `<option value="${u.value}">${u.label}</option>`).join('');
-        if (config.stories) storySelect.innerHTML = config.stories.map(s => `<option value="${s.value}">${s.label}</option>`).join('');
+        if (config.unitTypes) {
+            unitSelect.innerHTML = config.unitTypes.map(u => 
+                `<option value="${sanitizeHTML(u.value)}">${sanitizeHTML(u.label)}</option>`
+            ).join('');
+        }
+        if (config.stories) {
+            storySelect.innerHTML = config.stories.map(s => 
+                `<option value="${sanitizeHTML(s.value)}">${sanitizeHTML(s.label)}</option>`
+            ).join('');
+        }
         updateSelection();
     }
 
