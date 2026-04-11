@@ -62,9 +62,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         pinsContainer.innerHTML = '';
 
         // SEARCH FOR CUSTOM MAP URL IN CONFIG
-        const currentStoryData = projectConfig.stories.find(s => s.value === story);
-        if (currentStoryData && currentStoryData.mapUrl) {
-            floorplanImg.src = currentStoryData.mapUrl;
+        let customMapUrl = null;
+        if (projectConfig.maps) {
+            const currentMap = projectConfig.maps.find(m => m.unit === unit && m.story === story);
+            if (currentMap && currentMap.mapUrl) {
+                customMapUrl = currentMap.mapUrl;
+            }
+        }
+        
+        if (customMapUrl) {
+            floorplanImg.src = customMapUrl;
         } else {
             floorplanImg.src = `assets/${unit}_${story}.png`;
         }
