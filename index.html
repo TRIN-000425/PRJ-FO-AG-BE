@@ -9,7 +9,7 @@
     <meta name="theme-color" content="#317EFB">
     <link rel="apple-touch-icon" href="assets/icon.svg">
 </head>
-<body>
+<body class="login-page">
     <div id="login-container" class="login-container">
         <form id="login-form" class="login-card">
             <h2>Welcome Back</h2>
@@ -26,6 +26,7 @@
                 <label for="otp">Authentication Code (OTP)</label>
                 <p style="font-size: 0.8rem; color: #666; margin-bottom: 5px;" id="otp-instruction">Please enter the OTP provided by your administrator.</p>
                 <input type="text" id="otp" name="otp" placeholder="Enter OTP from Admin">
+                <a href="#" id="change-username-link" style="display: block; font-size: 0.8rem; margin-top: 10px; color: #1877f2;">Change Username</a>
             </div>
             <button type="submit" id="login-btn">Login</button>
             <div id="message" class="message"></div>
@@ -39,6 +40,7 @@
             <button id="logout-btn" style="background-color: #f02849;">Logout</button>
         </div>
     </div>
+    <script src="config.js"></script>
     <script src="app.js"></script>
     <script>
         if ('serviceWorker' in navigator) {

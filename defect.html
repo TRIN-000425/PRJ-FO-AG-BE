@@ -27,7 +27,8 @@
             border-radius: 50%;
             border: 2px solid white;
             transform: translate(-50%, -50%);
-            pointer-events: none;
+            cursor: pointer;
+            z-index: 10;
         }
         .defect-modal {
             display: none;
@@ -155,6 +156,21 @@
         </div>
     </div>
 
+    <!-- View Detail Modal -->
+    <div id="detail-modal" class="defect-modal">
+        <div class="modal-content">
+            <h3>Defect Detail</h3>
+            <p><strong>Status:</strong> <span id="detail-status"></span></p>
+            <p><strong>Description:</strong> <span id="detail-desc"></span></p>
+            <div id="detail-photo-container">
+                <img id="detail-img" style="max-width: 100%; margin-top: 10px;" alt="Defect Photo">
+            </div>
+            <button id="close-detail-btn" style="margin-top: 20px;">Close</button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/idb@8/build/umd.js"></script>
+    <script src="config.js"></script>
     <script src="defect-logic.js"></script>
 </body>
 </html>

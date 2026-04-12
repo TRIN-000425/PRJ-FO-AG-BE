@@ -1,8 +1,9 @@
-const CACHE_NAME = 'pwa-login-v1';
-const ASSETS_TO_CACHE = [
+const CACHE_NAME = 'pwa-defect-v2';
+const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/style.css',
+  '/config.js',
   '/app.js',
   '/defect.html',
   '/defect-logic.js',
@@ -15,37 +16,54 @@ const ASSETS_TO_CACHE = [
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      console.log('Caching initial assets');
-      return cache.addAll(ASSETS_TO_CACHE);
+      return cache.addAll(STATIC_ASSETS);
     })
   );
 });
 
-// Activate Event
+// Activate Event (Cleanup old caches)
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cache) => {
-          if (cache !== CACHE_NAME) {
-            console.log('Clearing old cache');
-            return caches.delete(cache);
-          }
-        })
-      );
+    caches.keys().then((keys) => {
+      return Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)));
     })
   );
 });
 
 // Fetch Event
 self.addEventListener('fetch', (event) => {
+  const url = new URL(event.request.url);
+
+  // Strategy for Images (Stale-While-Revalidate)
+  if (event.request.destination === 'image' || url.hostname.includes('googleusercontent.com')) {
+    event.respondWith(
+      caches.match(event.request).then((cached) => {
+        const networked = fetch(event.request).then((response) => {
+          return caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, response.clone());
+            return response;
+          });
+        }).catch(() => {}); // Silent fail if offline
+
+        return cached || networked;
+      })
+    );
+    return;
+  }
+
+  // Strategy for everything else (Network First, fallback to Cache)
   event.respondWith(
-    caches.match(event.request).then((response) => {
-      // Cache hit - return the response from the cached version
-      if (response) {
-        return response;
+    fetch(event.request).catch(() => {
+      // If it's a POST request and we're offline, return a JSON response instead of a network error
+      if (event.request.method === 'POST') {
+        return new Response(JSON.stringify({ 
+          status: 'offline', 
+          message: 'You are offline. Data saved locally to browser database.' 
+        }), {
+          headers: { 'Content-Type': 'application/json' }
+        });
       }
-      return fetch(event.request);
+      return caches.match(event.request);
     })
   );
 });

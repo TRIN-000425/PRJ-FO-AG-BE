@@ -7,16 +7,68 @@
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background-color: #f0f2f5;
+    min-height: 100vh;
+}
+
+/* Center login card on index.html */
+body.login-page {
     display: flex;
     justify-content: center;
     align-items: center;
-    height: 100vh;
     padding: 20px;
 }
 
 .login-container {
     width: 100%;
     max-width: 400px;
+}
+
+.main-content {
+    padding: 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.selectors {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 20px;
+    background: white;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.selectors .input-group {
+    margin-bottom: 0;
+}
+
+select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 1rem;
+    background: white;
+}
+
+/* Floorplan responsive sizing */
+.floorplan-container {
+    position: relative;
+    width: 100%;
+    background: #ddd;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    touch-action: none; /* Better for mobile map interaction */
+}
+
+@media (max-width: 600px) {
+    .selectors {
+        flex-direction: column;
+    }
+    .main-content {
+        padding: 10px;
+    }
 }
 
 .login-card {

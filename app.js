@@ -9,13 +9,28 @@ document.addEventListener('DOMContentLoaded', () => {
     const otpGroup = document.getElementById('otp-group');
     const otpInput = document.getElementById('otp');
     const passwordGroup = document.getElementById('password-group');
+    const changeUsernameLink = document.getElementById('change-username-link');
 
-    // REPLACE this with your actual Google Apps Script Web App URL
-    const GA_BACKEND_URL = 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE';
+    // GA_BACKEND_URL is loaded from config.js
     
     let isOtpStep = false;
 
     checkLoginState();
+
+    function resetLoginState() {
+        isOtpStep = false;
+        otpGroup.style.display = 'none';
+        passwordGroup.style.display = 'block';
+        document.getElementById('username').readOnly = false;
+        otpInput.value = '';
+        loginBtn.textContent = 'Login';
+        messageDiv.style.display = 'none';
+    }
+
+    changeUsernameLink.onclick = (e) => {
+        e.preventDefault();
+        resetLoginState();
+    };
 
     // 1. Permanent Device Fingerprint
     function getDeviceId() {
@@ -127,6 +142,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     logoutBtn.addEventListener('click', () => {
         localStorage.removeItem('user_session'); // Does NOT remove device_id
+        localStorage.removeItem('project_config'); // Clear project config on logout
         isOtpStep = false;
         otpGroup.style.display = 'none';
         passwordGroup.style.display = 'block';
@@ -139,7 +155,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function showMessage(text, type) {
         messageDiv.textContent = text;
-        messageDiv.className = `message ${type}`;
+        messageDiv.className = 'message'; // Reset classes
+        if (type) messageDiv.classList.add(type);
         messageDiv.style.display = 'block';
     }
 });
