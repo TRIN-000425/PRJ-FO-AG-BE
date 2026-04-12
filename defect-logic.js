@@ -211,6 +211,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                     // Success! Remove ONLY this specific defect from IndexedDB
                     await db.delete('pending_defects', defect.id);
                     successCount++;
+                } else if (result.status === 'offline') {
+                    alert('Device is offline. Sync paused.');
+                    failCount = defects.length - successCount;
+                    break;
                 } else {
                     failCount++;
                 }
