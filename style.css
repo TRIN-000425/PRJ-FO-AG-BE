@@ -1,14 +1,14 @@
 :root {
-    --bg-color: #1e1e26;
-    --card-bg: #1e1e26;
-    --text-color: #e0e0e0;
-    --text-muted: #a0a0a0;
-    --accent-color: #00f2ff;
-    --accent-glow: rgba(0, 242, 255, 0.5);
-    --shadow-light: rgba(255, 255, 255, 0.05);
-    --shadow-dark: rgba(0, 0, 0, 0.4);
-    --error-color: #ff4d4d;
-    --success-color: #00ff88;
+    --bg-color: #f0f3f6;
+    --card-bg: #f0f3f6;
+    --text-color: #333333;
+    --text-muted: #666666;
+    --accent-color: #1877f2;
+    --accent-glow: rgba(24, 119, 242, 0.3);
+    --shadow-light: #ffffff;
+    --shadow-dark: #d1d9e6;
+    --error-color: #cf222e;
+    --success-color: #1a7f37;
 }
 
 * {
@@ -67,9 +67,9 @@ body.login-page {
 /* Header & Navigation */
 header {
     padding: 15px 25px;
-    background: rgba(30, 30, 38, 0.8);
+    background: rgba(240, 243, 246, 0.8);
     backdrop-filter: blur(10px);
-    border-bottom: 1px solid var(--shadow-light);
+    border-bottom: 1px solid var(--shadow-dark);
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -121,7 +121,7 @@ textarea {
     width: 100%;
     padding: 12px 15px;
     background: var(--bg-color);
-    border: 1px solid rgba(255,255,255,0.1);
+    border: 1px solid rgba(0,0,0,0.05);
     border-radius: 8px;
     color: var(--text-color);
     font-size: 1rem;
@@ -133,7 +133,6 @@ textarea {
 
 input:focus, select:focus, textarea:focus {
     border-color: var(--accent-color);
-    box-shadow: 0 0 8px var(--accent-glow);
 }
 
 /* Buttons */
@@ -152,7 +151,6 @@ button {
     transition: all 0.2s ease;
     text-transform: uppercase;
     letter-spacing: 1px;
-    border: 1px solid rgba(255,255,255,0.05);
 }
 
 button:hover {
@@ -169,19 +167,15 @@ button:active {
 }
 
 button.primary {
-    background: linear-gradient(145deg, #1e1e26, #23232d);
     color: var(--accent-color);
-    border: 1px solid var(--accent-color);
 }
 
 button.danger {
     color: var(--error-color);
-    border: 1px solid var(--error-color);
 }
 
 button.success {
     color: var(--success-color);
-    border: 1px solid var(--success-color);
 }
 
 button:disabled {
@@ -192,22 +186,20 @@ button:disabled {
 
 /* Modals */
 .defect-modal {
-    background: rgba(0, 0, 0, 0.7);
-    backdrop-filter: blur(8px);
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(4px);
 }
 
 .modal-content {
     background: var(--card-bg) !important;
     box-shadow: 20px 20px 60px var(--shadow-dark), 
                 -20px -20px 60px var(--shadow-light);
-    border: 1px solid var(--shadow-light);
     border-radius: 20px !important;
 }
 
 /* Floorplan & Pins */
 .floorplan-container {
     margin-top: 25px;
-    border: 1px solid var(--shadow-light);
     box-shadow: 10px 10px 20px var(--shadow-dark);
 }
 
@@ -215,7 +207,7 @@ button:disabled {
     width: 18px !important;
     height: 18px !important;
     border: 2px solid #fff !important;
-    box-shadow: 0 0 10px rgba(0,0,0,0.5), 0 0 15px var(--accent-glow);
+    box-shadow: 0 0 10px rgba(0,0,0,0.2);
     transition: transform 0.2s ease;
 }
 
@@ -232,27 +224,96 @@ button:disabled {
     background: var(--card-bg);
 }
 
+/* Dashboard Specific Styles */
+.unit-section {
+    margin-bottom: 40px;
+}
+
+.unit-header {
+    border-bottom: 2px solid var(--accent-color);
+    display: inline-block;
+    padding-bottom: 5px;
+    margin-bottom: 20px;
+}
+
+.defect-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 25px;
+}
+
+.defect-card {
+    padding: 20px;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+.defect-card-img {
+    width: 100%;
+    height: 180px;
+    object-fit: cover;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    box-shadow: inset 2px 2px 5px var(--shadow-dark);
+}
+
+.badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: 2px 2px 5px var(--shadow-dark);
+}
+
+.badge.synced {
+    background: var(--success-color);
+    color: white;
+}
+
+.badge.pending {
+    background: var(--error-color);
+    color: white;
+}
+
+.defect-card h4 {
+    margin-bottom: 5px;
+    font-size: 1.1rem;
+}
+
+.defect-card p.desc {
+    font-size: 0.9rem;
+    margin-top: 10px;
+    flex-grow: 1;
+}
+
+.defect-card .date {
+    font-size: 0.75rem;
+    margin-top: 15px;
+    color: var(--text-muted);
+}
+
 /* Messaging */
 .message {
     margin-top: 20px;
     font-size: 0.85rem;
     padding: 12px;
     border-radius: 8px;
-    border: 1px solid transparent;
 }
 
 .message.error {
-    background: rgba(255, 77, 77, 0.1);
+    background: rgba(207, 34, 46, 0.1);
     color: var(--error-color);
-    border-color: var(--error-color);
-    display: block;
 }
 
 .message.success {
-    background: rgba(0, 255, 136, 0.1);
+    background: rgba(26, 127, 55, 0.1);
     color: var(--success-color);
-    border-color: var(--success-color);
-    display: block;
 }
 
 /* Responsive */

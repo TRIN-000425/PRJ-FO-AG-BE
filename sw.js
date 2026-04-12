@@ -2,6 +2,8 @@ const CACHE_NAME = 'pwa-defect-v2';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
+  '/home.html',
+  '/home-logic.js',
   '/style.css',
   '/config.js',
   '/app.js',

@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Defect Tracker - Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#f0f3f6">
+    <link rel="apple-touch-icon" href="assets/icon.svg">
+</head>
+<body>
+    <header>
+        <span>Defect Dashboard</span>
+        <div style="display: flex; gap: 12px;">
+            <button id="new-report-btn" class="primary" style="width: auto; padding: 8px 15px; font-size: 0.8rem;">New Report</button>
+            <button id="logout-btn" class="danger" style="width: auto; padding: 8px 15px; font-size: 0.8rem;">Logout</button>
+        </div>
+    </header>
+
+    <div class="main-content">
+        <div style="margin-bottom: 30px;">
+            <h2>Defect Monitoring</h2>
+            <p>Track and manage all defects grouped by unit. Both local pending and synced reports are shown here.</p>
+        </div>
+
+        <div id="dashboard-content">
+            <!-- Dynamic Content Loaded Here -->
+            <div style="text-align: center; padding: 50px;">
+                <p>Loading dashboard data...</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/idb@8/build/umd.js"></script>
+    <script src="config.js"></script>
+    <script src="home-logic.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js');
+            });
+        }
+    </script>
+</body>
+</html>

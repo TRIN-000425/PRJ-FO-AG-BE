@@ -53,18 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function showDashboard(user) {
-        loginContainer.style.display = 'none';
-        dashboardContainer.style.display = 'block';
-        userDisplay.textContent = user.name || user.username;
-        
-        if (!document.getElementById('start-tracking-btn')) {
-            const startBtn = document.createElement('button');
-            startBtn.id = 'start-tracking-btn';
-            startBtn.textContent = 'Start Defect Tracking';
-            startBtn.style.marginTop = '10px';
-            startBtn.onclick = () => window.location.href = 'defect.html';
-            dashboardContainer.querySelector('.login-card').insertBefore(startBtn, logoutBtn);
-        }
+        window.location.href = 'home.html';
     }
 
     function showLogin() {
