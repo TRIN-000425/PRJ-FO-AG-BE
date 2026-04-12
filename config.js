@@ -1,2 +1,2 @@
 // REPLACE this with your actual Google Apps Script Web App URL
-const GA_BACKEND_URL = 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE';
+const GA_BACKEND_URL = 'https://script.google.com/macros/s/AKfycbzFyHO61C2imliAs3DMEh6B2qnSsQh-0S7P5xH8nogjy0zV1cMAv4DYpd9vn9zyUEyB/exec';
