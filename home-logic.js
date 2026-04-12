@@ -1,4 +1,6 @@
 let dbPromise = null;
+let currentUpdatingDefect = null;
+let updatedDonePhotoBase64 = null;
 
 // Initialize IndexedDB
 async function initDB() {
@@ -20,7 +22,28 @@ document.addEventListener('DOMContentLoaded', async () => {
     const db = await initDB();
     const logoutBtn = document.getElementById('logout-btn');
     const newReportBtn = document.getElementById('new-report-btn');
+    const syncBtn = document.getElementById('sync-btn');
+    const adminBtn = document.getElementById('admin-btn');
     const dashboardContent = document.getElementById('dashboard-content');
+
+    // Modals & Elements
+    const adminModal = document.getElementById('admin-modal');
+    const closeAdminBtn = document.getElementById('close-admin-btn');
+    const detailModal = document.getElementById('detail-modal');
+    const closeDetailBtn = document.getElementById('close-detail-btn');
+    const updateStatusSelect = document.getElementById('update-status-select');
+    const donePhotoGroup = document.getElementById('done-photo-group');
+    const donePhotoInput = document.getElementById('done-photo-input');
+    const saveUpdateBtn = document.getElementById('save-update-btn');
+    
+    const detailStatusText = document.getElementById('detail-status-text');
+    const detailDesc = document.getElementById('detail-desc');
+    const detailImg = document.getElementById('detail-img');
+
+    // Admin UI Initialization
+    if (session.role === 'Admin') adminBtn.style.display = 'block';
+    adminBtn.onclick = () => adminModal.style.display = 'block';
+    closeAdminBtn.onclick = () => adminModal.style.display = 'none';
 
     logoutBtn.onclick = () => {
         localStorage.removeItem('user_session');
@@ -32,46 +55,112 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.location.href = 'defect.html';
     };
 
+    // Load Config for Admin Selectors
+    await loadAdminSelectors();
+
+    async function loadAdminSelectors() {
+        const cached = localStorage.getItem('project_config');
+        if (cached) {
+            const config = JSON.parse(cached);
+            const unitSelect = document.getElementById('admin-unit-select');
+            const storySelect = document.getElementById('admin-story-select');
+            
+            if (config.unitTypes) {
+                unitSelect.innerHTML = config.unitTypes.map(u => `<option value="${u.value}">${u.label}</option>`).join('');
+            }
+            if (config.stories) {
+                storySelect.innerHTML = config.stories.map(s => `<option value="${s.value}">${s.label}</option>`).join('');
+            }
+        }
+    }
+
+    // Admin Logic
+    document.getElementById('add-unit-btn').onclick = async () => {
+        const val = document.getElementById('new-unit-val').value.trim();
+        const label = document.getElementById('new-unit-label').value.trim();
+        if (!val || !label) return alert('Enter both ID and Name');
+        const res = await authorizedPost('add_unit', { value: val, label: label });
+        if (res && (await res.json()).status === 'success') { alert('Unit added!'); await refreshConfig(); }
+    };
+
+    document.getElementById('add-story-btn').onclick = async () => {
+        const val = document.getElementById('new-story-val').value.trim();
+        const label = document.getElementById('new-story-label').value.trim();
+        if (!val || !label) return alert('Enter both ID and Name');
+        const res = await authorizedPost('add_story', { value: val, label: label });
+        if (res && (await res.json()).status === 'success') { alert('Story added!'); await refreshConfig(); }
+    };
+
+    document.getElementById('upload-map-btn').onclick = async () => {
+        const file = document.getElementById('map-upload-input').files[0];
+        if (!file) return alert('Select PNG');
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            const res = await authorizedPost('upload_map', { 
+                unit: document.getElementById('admin-unit-select').value, 
+                story: document.getElementById('admin-story-select').value, 
+                imageBlob: e.target.result 
+            });
+            if (res && (await res.json()).status === 'success') { alert('Uploaded!'); await refreshConfig(); }
+        };
+        reader.readAsDataURL(file);
+    };
+
+    async function refreshConfig() {
+        const res = await authorizedPost('get_config', {});
+        if (res) {
+            const result = await res.json();
+            if (result.status === 'success') {
+                localStorage.setItem('project_config', JSON.stringify(result.config));
+                await loadAdminSelectors();
+                await renderDashboard();
+            }
+        }
+    }
+
+    // Dashboard Logic
     await renderDashboard();
 
     async function renderDashboard() {
-        dashboardContent.innerHTML = '<div style="text-align: center; padding: 50px;"><p>Loading and grouping defects...</p></div>';
-
-        // 1. Get synced defects from config (local cache or backend)
+        dashboardContent.innerHTML = '<div style="text-align: center; padding: 50px;"><p>Loading lifecycle data...</p></div>';
         let projectConfig = { syncedDefects: [] };
         const cached = localStorage.getItem('project_config');
         if (cached) projectConfig = JSON.parse(cached);
 
-        // 2. Get pending defects from IndexedDB
         const pendingDefects = await db.getAll('pending_defects');
-
-        // 3. Combine all defects
         const allDefects = [
-            ...projectConfig.syncedDefects.map(d => ({ ...d, status: 'synced' })),
-            ...pendingDefects.map(d => ({ ...d, status: 'pending' }))
+            ...projectConfig.syncedDefects.map(d => ({ ...d, isSynced: true })),
+            ...pendingDefects.map(d => ({ ...d, isSynced: false }))
         ];
 
         if (allDefects.length === 0) {
-            dashboardContent.innerHTML = '<div class="neu-inset" style="text-align: center; padding: 50px; border-radius: 20px;"><p>No defect reports found yet.</p></div>';
+            dashboardContent.innerHTML = '<div class="neu-inset" style="text-align: center; padding: 50px; border-radius: 20px;"><p>No defect reports found.</p></div>';
             return;
         }
 
-        // 4. Group by Unit
         const grouped = allDefects.reduce((acc, d) => {
-            const unit = d.unit || 'Unknown Unit';
+            const unit = d.unit || 'Unknown';
             if (!acc[unit]) acc[unit] = [];
             acc[unit].push(d);
             return acc;
         }, {});
 
-        // 5. Render
         let html = '';
         for (const [unit, defects] of Object.entries(grouped)) {
             html += `
                 <div class="unit-section">
-                    <h3 class="unit-header">${sanitizeHTML(unit)}</h3>
+                    <h3 class="unit-header">${unit}</h3>
                     <div class="defect-grid">
-                        ${defects.map(d => renderDefectCard(d)).join('')}
+                        ${defects.map(d => `
+                            <div class="defect-card neu-raised" onclick='window.showDefectDetail(${JSON.stringify(d).replace(/'/g, "&apos;")})'>
+                                <span class="badge ${d.status || 'Open'}">${d.status || 'Open'}</span>
+                                ${!d.isSynced ? '<span class="badge pending" style="top: auto; bottom: 10px;">Pending Sync</span>' : ''}
+                                <img src="${d.donePhotoUrl || d.photo || d.photoUrl || 'assets/floorplan-placeholder.png'}" class="defect-card-img">
+                                <h4>${d.story || 'N/A'}</h4>
+                                <p class="desc">${d.description || 'No description'}</p>
+                                <p class="date">${new Date(d.timestamp).toLocaleDateString()}</p>
+                            </div>
+                        `).join('')}
                     </div>
                 </div>
             `;
@@ -79,24 +168,116 @@ document.addEventListener('DOMContentLoaded', async () => {
         dashboardContent.innerHTML = html;
     }
 
-    function renderDefectCard(d) {
-        const photo = d.photo || d.photoUrl || 'assets/floorplan-placeholder.png';
-        const date = d.timestamp ? new Date(d.timestamp).toLocaleString() : 'Date unknown';
-        
-        return `
-            <div class="defect-card neu-raised">
-                <span class="badge ${d.status}">${d.status}</span>
-                <img src="${photo}" class="defect-card-img" alt="Defect Photo" onerror="this.src='assets/floorplan-placeholder.png'">
-                <h4>${sanitizeHTML(d.story || 'N/A')}</h4>
-                <p class="desc">${sanitizeHTML(d.description || 'No description provided.')}</p>
-                <p class="date">${date}</p>
-            </div>
-        `;
-    }
+    window.showDefectDetail = (defect) => {
+        currentUpdatingDefect = defect;
+        updatedDonePhotoBase64 = null;
+        detailStatusText.textContent = defect.status || 'Open';
+        detailDesc.textContent = defect.description;
+        detailImg.src = defect.photo || defect.photoUrl || '';
+        updateStatusSelect.value = defect.status || 'Open';
+        donePhotoGroup.style.display = (updateStatusSelect.value === 'Done') ? 'block' : 'none';
+        detailModal.style.display = 'block';
+    };
 
-    function sanitizeHTML(str) {
-        const div = document.createElement('div');
-        div.textContent = str;
-        return div.innerHTML;
+    updateStatusSelect.onchange = () => {
+        donePhotoGroup.style.display = (updateStatusSelect.value === 'Done') ? 'block' : 'none';
+    };
+
+    donePhotoInput.onchange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            document.getElementById('done-compressing-msg').style.display = 'block';
+            compressImage(file, 1024, 0.7, (base) => {
+                updatedDonePhotoBase64 = base;
+                document.getElementById('done-compressing-msg').style.display = 'none';
+            });
+        }
+    };
+
+    saveUpdateBtn.onclick = async () => {
+        const newStatus = updateStatusSelect.value;
+        if (newStatus === 'Done' && !updatedDonePhotoBase64 && !currentUpdatingDefect.donePhotoUrl) {
+            return alert('Completion photo is required to mark as Done.');
+        }
+
+        const updated = { 
+            ...currentUpdatingDefect, 
+            status: newStatus,
+            donePhoto: updatedDonePhotoBase64 || currentUpdatingDefect.donePhoto
+        };
+        delete updated.isSynced; // Don't store UI state
+
+        await db.put('pending_defects', updated);
+        detailModal.style.display = 'none';
+        await renderDashboard();
+        alert('Update saved locally. Click "Sync to GA" to upload changes.');
+    };
+
+    closeDetailBtn.onclick = () => detailModal.style.display = 'none';
+
+    // Sync Logic
+    let isSyncing = false;
+    window.onbeforeunload = () => isSyncing ? 'Sync in progress...' : null;
+
+    syncBtn.onclick = async () => {
+        const pending = await db.getAll('pending_defects');
+        if (pending.length === 0) return alert('No pending updates to sync.');
+        
+        isSyncing = true;
+        syncBtn.disabled = true;
+        let success = 0;
+
+        for (const d of pending) {
+            syncBtn.textContent = `Syncing... (${success + 1}/${pending.length})`;
+            try {
+                const res = await authorizedPost('sync_defects', { defect: d });
+                if (res && (await res.json()).status === 'success') {
+                    await db.delete('pending_defects', d.id);
+                    success++;
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        alert(`Sync Complete. Updated ${success} records.`);
+        isSyncing = false;
+        syncBtn.disabled = false;
+        syncBtn.textContent = 'Sync to GA';
+        await refreshConfig();
+    };
+
+    async function authorizedPost(action, payload) {
+        const res = await fetch(GA_BACKEND_URL, {
+            method: 'POST', mode: 'cors',
+            body: JSON.stringify({
+                action,
+                auth: { username: session.username, deviceId: session.deviceId, deviceToken: session.deviceToken },
+                ...payload
+            })
+        });
+        if (res.status === 401) { 
+            alert('Session expired.'); 
+            localStorage.removeItem('user_session'); 
+            window.location.href = 'index.html'; 
+            return null; 
+        }
+        return res;
     }
 });
+
+function compressImage(file, max, qual, cb) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            let w = img.width, h = img.height;
+            if (w > h) { if (w > max) { h *= max/w; w = max; } }
+            else { if (h > max) { w *= max/h; h = max; } }
+            canvas.width = w; canvas.height = h;
+            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+            cb(canvas.toDataURL('image/jpeg', qual));
+        };
+        img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+}
