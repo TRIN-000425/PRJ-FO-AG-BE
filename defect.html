@@ -11,9 +11,9 @@
             width: 100%;
             max-width: 1000px;
             margin: 20px auto;
-            border: 2px solid #ccc;
             overflow: hidden;
             cursor: crosshair;
+            border-radius: 15px;
         }
         #floorplan-img {
             width: 100%;
@@ -21,116 +21,93 @@
         }
         .pin {
             position: absolute;
-            width: 20px;
-            height: 20px;
-            background-color: red;
-            border-radius: 50%;
-            border: 2px solid white;
             transform: translate(-50%, -50%);
-            cursor: pointer;
+            border-radius: 50%;
             z-index: 10;
-        }
-        .defect-modal {
-            display: none;
-            position: fixed;
-            z-index: 1000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0,0,0,0.5);
-        }
-        .modal-content {
-            background-color: white;
-            margin: 10% auto;
-            padding: 20px;
-            border-radius: 8px;
-            max-width: 500px;
-            width: 90%;
+            cursor: pointer;
         }
         #preview-img {
             max-width: 100%;
-            margin-top: 10px;
+            margin-top: 15px;
             display: none;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
         }
     </style>
 </head>
 <body>
-    <header style="padding: 10px; background: #1877f2; color: white; display: flex; justify-content: space-between; align-items: center;">
+    <header>
         <span>Defect Tracker</span>
-        <div style="display: flex; gap: 10px;">
-            <button id="admin-btn" style="width: auto; padding: 5px 10px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">Project Setup</button>
-            <button id="sync-btn" style="width: auto; padding: 5px 10px; background: #42b883; color: white; border: none; border-radius: 4px; cursor: pointer;">Sync to GA</button>
-            <button id="back-btn" style="width: auto; padding: 5px 10px; background: #fff; color: #1877f2;">Back</button>
+        <div style="display: flex; gap: 12px;">
+            <button id="admin-btn" style="width: auto; padding: 8px 15px; font-size: 0.8rem;">Setup</button>
+            <button id="sync-btn" class="success" style="width: auto; padding: 8px 15px; font-size: 0.8rem;">Sync to GA</button>
+            <button id="back-btn" class="danger" style="width: auto; padding: 8px 15px; font-size: 0.8rem;">Back</button>
         </div>
     </header>
 
     <!-- Admin Setup Modal -->
     <div id="admin-modal" class="defect-modal">
-        <div class="modal-content" style="max-width: 600px;">
+        <div class="modal-content neu-raised" style="max-width: 600px; padding: 30px;">
             <h3>Project Setup</h3>
-            <hr style="margin: 15px 0;">
+            <hr style="margin: 20px 0; border: none; border-top: 1px solid var(--shadow-light);">
             
-            <div style="margin-bottom: 20px;">
+            <div style="margin-bottom: 25px;">
                 <h4>Add Unit Type</h4>
-                <div style="display: flex; gap: 5px; margin-top: 5px;">
-                    <input type="text" id="new-unit-val" placeholder="ID (e.g. Type-D)" style="flex: 1; padding: 8px;">
-                    <input type="text" id="new-unit-label" placeholder="Display Name (e.g. Type D)" style="flex: 1; padding: 8px;">
-                    <button id="add-unit-btn" style="width: auto;">Add</button>
+                <div style="display: flex; gap: 10px; margin-top: 10px;">
+                    <input type="text" id="new-unit-val" placeholder="ID (e.g. Type-D)">
+                    <input type="text" id="new-unit-label" placeholder="Display Name">
+                    <button id="add-unit-btn" class="primary" style="width: auto;">Add</button>
                 </div>
             </div>
 
-            <div style="margin-bottom: 20px;">
+            <div style="margin-bottom: 25px;">
                 <h4>Add Story / Floor</h4>
-                <div style="display: flex; gap: 5px; margin-top: 5px;">
-                    <input type="text" id="new-story-val" list="common-stories" placeholder="ID (e.g. L4)" style="flex: 1; padding: 8px;">
+                <div style="display: flex; gap: 10px; margin-top: 10px;">
+                    <input type="text" id="new-story-val" list="common-stories" placeholder="ID (e.g. L4)">
                     <datalist id="common-stories">
                         <option value="Basement">
                         <option value="L1">
                         <option value="L2">
                         <option value="Rooftop">
                     </datalist>
-                    <input type="text" id="new-story-label" placeholder="Display (e.g. Floor 4)" style="flex: 1; padding: 8px;">
-                    <button id="add-story-btn" style="width: auto;">Add</button>
+                    <input type="text" id="new-story-label" placeholder="Display Name">
+                    <button id="add-story-btn" class="primary" style="width: auto;">Add</button>
                 </div>
             </div>
 
-            <div style="margin-bottom: 20px;">
-                <h4>Upload Floor Plan PNG</h4>
-                <p style="font-size: 0.8rem; color: #666;">Choose Unit and Story first, then upload.</p>
-                <input type="file" id="map-upload-input" accept="image/png" style="margin-top: 5px;">
-                <button id="upload-map-btn" style="width: auto; margin-top: 10px; background: #1877f2;">Upload PNG to Drive</button>
+            <div style="margin-bottom: 25px;">
+                <h4>Upload Floor Plan</h4>
+                <p style="margin-bottom: 10px;">PNG recommended.</p>
+                <input type="file" id="map-upload-input" accept="image/png">
+                <button id="upload-map-btn" class="primary" style="width: auto; margin-top: 15px;">Upload to Drive</button>
             </div>
 
-            <button id="close-admin-btn" style="background: #ccc;">Close</button>
+            <button id="close-admin-btn" style="margin-top: 10px;">Close</button>
         </div>
     </div>
 
-    <div class="main-content" style="padding: 20px;">
-        <div class="selectors" style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
-            <div class="input-group" style="flex: 1; min-width: 150px; margin-bottom: 0;">
+    <div class="main-content">
+        <div class="selectors neu-raised">
+            <div class="input-group" style="flex: 1; min-width: 200px; margin-bottom: 0;">
                 <label>Unit Type</label>
-                <select id="unit-type-select">
-                    <option value="Type-A">Type A (Studio)</option>
-                    <option value="Type-B">Type B (2-Bedroom)</option>
-                    <option value="Type-C">Type C (Penthouse)</option>
-                </select>
+                <select id="unit-type-select"></select>
             </div>
-            <div class="input-group" style="flex: 1; min-width: 150px; margin-bottom: 0;">
+            <div class="input-group" style="flex: 1; min-width: 200px; margin-bottom: 0;">
                 <label>Story / Floor</label>
-                <select id="story-select">
-                    <option value="L1">Level 1</option>
-                    <option value="L2">Level 2</option>
-                    <option value="L3">Level 3</option>
-                </select>
+                <select id="story-select"></select>
             </div>
         </div>
 
-        <h3>Unit: <span id="current-unit-display">Type-A</span> | Floor: <span id="current-floor-display">L1</span></h3>
-        <p>Click on the map to report a defect.</p>
+        <div style="margin-bottom: 20px; text-align: center;">
+            <h3 style="margin-bottom: 5px;">
+                <span id="current-unit-display" style="color: var(--accent-color);">Type-A</span> 
+                <span style="color: var(--text-muted); margin: 0 10px;">|</span> 
+                <span id="current-floor-display" style="color: var(--accent-color);">L1</span>
+            </h3>
+            <p>Click on the map to log a new defect report.</p>
+        </div>
         
-        <div class="floorplan-container" id="map-container">
-            <!-- Placeholder for your PNG floor plan -->
+        <div class="floorplan-container neu-inset" id="map-container">
             <img src="assets/floorplan-placeholder.png" id="floorplan-img" alt="Floor Plan">
             <div id="pins-container"></div>
         </div>
@@ -138,34 +115,36 @@
 
     <!-- Defect Entry Modal -->
     <div id="defect-modal" class="defect-modal">
-        <div class="modal-content">
-            <h3>New Defect</h3>
-            <div class="input-group">
+        <div class="modal-content neu-raised" style="padding: 30px;">
+            <h3>New Defect Report</h3>
+            <div class="input-group" style="margin-top: 20px;">
                 <label>Description</label>
-                <textarea id="defect-desc" rows="3" style="width: 100%; padding: 10px;"></textarea>
+                <textarea id="defect-desc" rows="4" placeholder="Describe the issue..."></textarea>
             </div>
             <div class="input-group">
-                <label>Photo</label>
+                <label>Attach Photo</label>
                 <input type="file" id="defect-photo" accept="image/*" capture="environment">
                 <img id="preview-img" alt="Preview">
             </div>
-            <div style="display: flex; gap: 10px;">
-                <button id="save-defect-btn">Save Defect</button>
-                <button id="cancel-defect-btn" style="background-color: #ccc;">Cancel</button>
+            <div style="display: flex; gap: 15px; margin-top: 10px;">
+                <button id="save-defect-btn" class="success">Save Report</button>
+                <button id="cancel-defect-btn" class="danger">Cancel</button>
             </div>
         </div>
     </div>
 
     <!-- View Detail Modal -->
     <div id="detail-modal" class="defect-modal">
-        <div class="modal-content">
+        <div class="modal-content neu-raised" style="padding: 30px;">
             <h3>Defect Detail</h3>
-            <p><strong>Status:</strong> <span id="detail-status"></span></p>
-            <p><strong>Description:</strong> <span id="detail-desc"></span></p>
-            <div id="detail-photo-container">
-                <img id="detail-img" style="max-width: 100%; margin-top: 10px;" alt="Defect Photo">
+            <div style="margin: 20px 0;">
+                <p style="margin-bottom: 10px;"><strong style="color: var(--text-color);">Status:</strong> <span id="detail-status" style="color: var(--accent-color);"></span></p>
+                <p><strong style="color: var(--text-color);">Description:</strong> <span id="detail-desc"></span></p>
             </div>
-            <button id="close-detail-btn" style="margin-top: 20px;">Close</button>
+            <div id="detail-photo-container">
+                <img id="detail-img" style="max-width: 100%; margin-top: 15px; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.4);" alt="Defect Photo">
+            </div>
+            <button id="close-detail-btn" class="primary" style="margin-top: 25px;">Close Detail</button>
         </div>
     </div>
 

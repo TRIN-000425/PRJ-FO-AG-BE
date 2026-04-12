@@ -6,12 +6,12 @@
     <title>PRJ-FO-GA-BE Login</title>
     <link rel="stylesheet" href="style.css">
     <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#317EFB">
+    <meta name="theme-color" content="#1e1e26">
     <link rel="apple-touch-icon" href="assets/icon.svg">
 </head>
 <body class="login-page">
     <div id="login-container" class="login-container">
-        <form id="login-form" class="login-card">
+        <form id="login-form" class="login-card neu-raised">
             <h2>Welcome Back</h2>
             <p>Please login to your account</p>
             <div class="input-group">
@@ -24,20 +24,20 @@
             </div>
             <div class="input-group" id="otp-group" style="display: none;">
                 <label for="otp">Authentication Code (OTP)</label>
-                <p style="font-size: 0.8rem; color: #666; margin-bottom: 5px;" id="otp-instruction">Please enter the OTP provided by your administrator.</p>
+                <p id="otp-instruction" style="margin-bottom: 10px;">Please enter the OTP provided by your administrator.</p>
                 <input type="text" id="otp" name="otp" placeholder="Enter OTP from Admin">
-                <a href="#" id="change-username-link" style="display: block; font-size: 0.8rem; margin-top: 10px; color: #1877f2;">Change Username</a>
+                <a href="#" id="change-username-link" style="display: block; font-size: 0.8rem; margin-top: 15px; color: var(--accent-color); text-decoration: none; text-transform: uppercase; font-weight: 600;">Change Username</a>
             </div>
-            <button type="submit" id="login-btn">Login</button>
+            <button type="submit" id="login-btn" class="primary">Login</button>
             <div id="message" class="message"></div>
         </form>
     </div>
 
     <div id="dashboard-container" class="login-container" style="display: none;">
-        <div class="login-card">
-            <h2>Welcome, <span id="user-display">User</span>!</h2>
-            <p>You are successfully logged in.</p>
-            <button id="logout-btn" style="background-color: #f02849;">Logout</button>
+        <div class="login-card neu-raised">
+            <h2>Welcome, <span id="user-display" style="color: var(--accent-color);">User</span>!</h2>
+            <p>Authorized access granted.</p>
+            <button id="logout-btn" class="danger" style="margin-top: 20px;">Logout</button>
         </div>
     </div>
     <script src="config.js"></script>
