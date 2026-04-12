@@ -131,6 +131,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 showMessage(result.message || 'Login failed.', 'error');
             }
         } catch (error) {
+            console.error('Fetch error:', error);
             showMessage('Connection error. Is GA_BACKEND_URL correct?', 'error');
         } finally {
             if (!isOtpStep || (isOtpStep && loginBtn.disabled)) {
