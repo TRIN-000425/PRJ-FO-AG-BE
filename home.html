@@ -23,46 +23,54 @@
 
     <!-- Admin Setup Modal -->
     <div id="admin-modal" class="defect-modal">
-        <div class="modal-content neu-raised" style="max-width: 600px; padding: 30px;">
-            <h3>Project Setup</h3>
-            <hr style="margin: 20px 0; border: none; border-top: 1px solid var(--shadow-light);">
+        <div class="modal-content neu-raised" style="max-width: 700px; padding: 30px;">
+            <h3 style="text-align: center; margin-bottom: 25px;">Project Configuration</h3>
             
-            <div style="margin-bottom: 25px;">
-                <h4>Add Unit Type</h4>
-                <div style="display: flex; gap: 10px; margin-top: 10px;">
-                    <input type="text" id="new-unit-val" placeholder="ID (e.g. Type-D)">
-                    <input type="text" id="new-unit-label" placeholder="Display Name">
-                    <button id="add-unit-btn" class="primary" style="width: auto;">Add</button>
+            <div style="display: flex; flex-direction: column; gap: 25px;">
+                <!-- Section 1: Units -->
+                <div class="neu-inset" style="padding: 20px; border-radius: 15px;">
+                    <h4 style="color: var(--accent-color); margin-bottom: 5px;">Step 1: Define Unit Types</h4>
+                    <p style="font-size: 0.8rem; margin-bottom: 15px;">Add the different types of units in this project (e.g., Studio, 2-BR).</p>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="text" id="new-unit-val" placeholder="ID (Type-A)" style="flex: 1;">
+                        <input type="text" id="new-unit-label" placeholder="Display Name" style="flex: 1;">
+                        <button id="add-unit-btn" class="primary" style="width: auto; padding: 0 20px;">Add</button>
+                    </div>
+                </div>
+
+                <!-- Section 2: Stories -->
+                <div class="neu-inset" style="padding: 20px; border-radius: 15px;">
+                    <h4 style="color: var(--accent-color); margin-bottom: 5px;">Step 2: Define Stories / Floors</h4>
+                    <p style="font-size: 0.8rem; margin-bottom: 15px;">Add the floor levels available for this project (e.g., L1, Rooftop).</p>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="text" id="new-story-val" list="common-stories" placeholder="ID (L1)" style="flex: 1;">
+                        <datalist id="common-stories">
+                            <option value="Basement">
+                            <option value="L1">
+                            <option value="L2">
+                            <option value="Rooftop">
+                        </datalist>
+                        <input type="text" id="new-story-label" placeholder="Display Name" style="flex: 1;">
+                        <button id="add-story-btn" class="primary" style="width: auto; padding: 0 20px;">Add</button>
+                    </div>
+                </div>
+
+                <!-- Section 3: Maps -->
+                <div class="neu-inset" style="padding: 20px; border-radius: 15px;">
+                    <h4 style="color: var(--accent-color); margin-bottom: 5px;">Step 3: Upload Floor Plans</h4>
+                    <p style="font-size: 0.8rem; margin-bottom: 15px;">Connect a PNG map to a specific Unit + Floor combination.</p>
+                    <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                        <select id="admin-unit-select" style="flex: 1;"></select>
+                        <select id="admin-story-select" style="flex: 1;"></select>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <input type="file" id="map-upload-input" accept="image/png" style="flex: 1;">
+                        <button id="upload-map-btn" class="success" style="width: auto; padding: 0 20px;">Upload PNG</button>
+                    </div>
                 </div>
             </div>
 
-            <div style="margin-bottom: 25px;">
-                <h4>Add Story / Floor</h4>
-                <div style="display: flex; gap: 10px; margin-top: 10px;">
-                    <input type="text" id="new-story-val" list="common-stories" placeholder="ID (e.g. L4)">
-                    <datalist id="common-stories">
-                        <option value="Basement">
-                        <option value="L1">
-                        <option value="L2">
-                        <option value="Rooftop">
-                    </datalist>
-                    <input type="text" id="new-story-label" placeholder="Display Name">
-                    <button id="add-story-btn" class="primary" style="width: auto;">Add</button>
-                </div>
-            </div>
-
-            <div style="margin-bottom: 25px;">
-                <h4>Upload Floor Plan</h4>
-                <p style="margin-bottom: 10px; font-size: 0.8rem;">Select Unit/Story from the lists below, then upload PNG.</p>
-                <div style="display: flex; gap: 10px; margin-bottom: 10px;">
-                    <select id="admin-unit-select" style="flex: 1;"></select>
-                    <select id="admin-story-select" style="flex: 1;"></select>
-                </div>
-                <input type="file" id="map-upload-input" accept="image/png">
-                <button id="upload-map-btn" class="primary" style="width: auto; margin-top: 15px;">Upload PNG to Drive</button>
-            </div>
-
-            <button id="close-admin-btn" style="margin-top: 10px;">Close</button>
+            <button id="close-admin-btn" class="danger" style="margin-top: 30px;">Close Configuration</button>
         </div>
     </div>
 
