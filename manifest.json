@@ -1,7 +1,7 @@
 {
   "name": "PRJ-FO-GA-BE PWA",
   "short_name": "LoginApp",
-  "start_url": "/index.html",
+  "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#1877f2",

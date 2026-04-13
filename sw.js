@@ -1,17 +1,17 @@
-const CACHE_NAME = 'pwa-defect-v7';
+const CACHE_NAME = 'pwa-defect-v9';
 const STATIC_ASSETS = [
-  '/',
-  '/index.html',
-  '/home.html',
-  '/home-logic.js',
-  '/style.css',
-  '/config.js',
-  '/app.js',
-  '/defect.html',
-  '/defect-logic.js',
-  '/manifest.json',
-  '/assets/icon.svg',
-  '/assets/floorplan-placeholder.png'
+  './',
+  './index.html',
+  './home.html',
+  './home-logic.js',
+  './style.css',
+  './config.js',
+  './app.js',
+  './defect.html',
+  './defect-logic.js',
+  './manifest.json',
+  './assets/icon.svg',
+  './assets/floorplan-placeholder.png'
 ];
 
 // Install Event
