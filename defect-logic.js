@@ -1,6 +1,7 @@
 let compressedPhotoData = null;
 let projectConfig = { unitTypes: [], stories: [] };
 let dbPromise = null;
+let isSyncing = false;
 
 // Initialize IndexedDB
 async function initDB() {
@@ -34,6 +35,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const cancelBtn = document.getElementById('cancel-defect-btn');
     const syncBtn = document.getElementById('sync-btn');
     const backBtn = document.getElementById('back-btn');
+    const syncIndicator = document.getElementById('sync-indicator');
 
     const detailModal = document.getElementById('detail-modal');
     const detailStatus = document.getElementById('detail-status');
@@ -43,6 +45,54 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     backBtn.onclick = () => window.location.href = 'home.html';
 
+    // --- AUTO-SYNC LOGIC ---
+    function updateSyncUI(status) {
+        if (!syncIndicator) return;
+        if (status === 'syncing') {
+            syncIndicator.style.background = '#1877f2';
+            syncIndicator.style.boxShadow = '0 0 10px #1877f2';
+        } else if (status === 'online') {
+            syncIndicator.style.background = '#1a7f37';
+            syncIndicator.style.boxShadow = 'none';
+        } else {
+            syncIndicator.style.background = '#cf222e';
+            syncIndicator.style.boxShadow = 'none';
+        }
+    }
+
+    async function syncAllPending() {
+        if (isSyncing || !navigator.onLine) return;
+        const pending = await db.getAll('pending_defects');
+        if (pending.length === 0) { updateSyncUI('online'); return; }
+
+        isSyncing = true;
+        updateSyncUI('syncing');
+        let successCount = 0;
+        for (const d of pending) {
+            try {
+                const res = await authorizedPost('sync_defects', { defect: d });
+                if (res && (await res.json()).status === 'success') {
+                    await db.delete('pending_defects', d.id);
+                    successCount++;
+                }
+            } catch (e) { console.warn('Background sync failed'); }
+        }
+        isSyncing = false;
+        if (successCount > 0) { await loadProjectConfig(); }
+        updateSyncUI(navigator.onLine ? 'online' : 'offline');
+    }
+
+    window.addEventListener('online', syncAllPending);
+    setInterval(syncAllPending, 30000);
+    syncAllPending();
+
+    syncBtn.onclick = async () => {
+        if (!navigator.onLine) return alert('Offline');
+        await syncAllPending();
+        alert('Sync complete');
+    };
+
+    // --- RENDER & LOGIC ---
     await loadProjectConfig();
 
     async function loadProjectConfig() {
@@ -72,21 +122,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     function renderSelectors(config) {
         const prevUnit = unitSelect.value;
         const prevStory = storySelect.value;
-
         if (config.unitTypes) {
-            unitSelect.innerHTML = config.unitTypes.map(u => 
-                `<option value="${sanitizeHTML(u.value)}">${sanitizeHTML(u.label)}</option>`
-            ).join('');
+            unitSelect.innerHTML = config.unitTypes.map(u => `<option value="${sanitizeHTML(u.value)}">${sanitizeHTML(u.label)}</option>`).join('');
         }
         if (config.stories) {
-            storySelect.innerHTML = config.stories.map(s => 
-                `<option value="${sanitizeHTML(s.value)}">${sanitizeHTML(s.label)}</option>`
-            ).join('');
+            storySelect.innerHTML = config.stories.map(s => `<option value="${sanitizeHTML(s.value)}">${sanitizeHTML(s.label)}</option>`).join('');
         }
-
         if (Array.from(unitSelect.options).some(o => o.value === prevUnit)) unitSelect.value = prevUnit;
         if (Array.from(storySelect.options).some(o => o.value === prevStory)) storySelect.value = prevStory;
-
         updateSelection();
     }
 
@@ -96,22 +139,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         unitDisplay.textContent = unit;
         floorDisplay.textContent = story;
         pinsContainer.innerHTML = '';
-
         let customMapUrl = null;
         if (projectConfig.maps) {
             const currentMap = projectConfig.maps.find(m => m.unit === unit && m.story === story);
             if (currentMap && currentMap.mapUrl) customMapUrl = currentMap.mapUrl;
         }
-        
         floorplanImg.src = customMapUrl || `assets/${unit}_${story}.png`;
         floorplanImg.onerror = () => { floorplanImg.src = 'assets/floorplan-placeholder.png'; };
-        
         if (projectConfig.syncedDefects) {
             projectConfig.syncedDefects.forEach(d => {
                 if (d.unit === unit && d.story === story) addPinToUI(d, 'synced');
             });
         }
-
         const pending = await db.getAll('pending_defects');
         pending.forEach(d => {
             if (d.unit === unit && d.story === story) addPinToUI(d, 'pending');
@@ -130,15 +169,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         pin.style.width = '18px';
         pin.style.height = '18px';
         pin.style.border = '2px solid white';
-        
-        // Status colors
         const colors = { Open: '#d29922', Onprogress: '#1877f2', Done: '#1a7f37' };
         pin.style.backgroundColor = colors[defect.status || 'Open'] || 'red';
-
-        pin.onclick = (e) => {
-            e.stopPropagation();
-            showDetail(defect, type);
-        };
+        pin.onclick = (e) => { e.stopPropagation(); showDetail(defect, type); };
         pinsContainer.appendChild(pin);
     }
 
@@ -164,31 +197,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (res.status === 401) { localStorage.removeItem('user_session'); window.location.href = 'index.html'; return null; }
         return res;
     }
-
-    let isSyncing = false;
-    syncBtn.onclick = async () => {
-        const pending = await db.getAll('pending_defects');
-        if (pending.length === 0) return alert('No pending defects');
-        isSyncing = true;
-        syncBtn.disabled = true; 
-        let success = 0;
-        for (const defect of pending) {
-            syncBtn.textContent = `Syncing... (${success + 1}/${pending.length})`;
-            try {
-                const res = await authorizedPost('sync_defects', { defect });
-                if (res && (await res.json()).status === 'success') {
-                    await db.delete('pending_defects', defect.id);
-                    success++;
-                }
-            } catch (err) { console.error(err); }
-        }
-        alert(`Sync Complete. ${success} records synced.`);
-        isSyncing = false;
-        syncBtn.disabled = false; 
-        syncBtn.textContent = 'Sync to GA';
-        await loadProjectConfig(); 
-        await updateSelection();
-    };
 
     let activePinContext = null;
     mapContainer.onclick = (e) => {
@@ -229,11 +237,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             timestamp: new Date().toISOString(),
             unit: activePinContext.unit,
             story: activePinContext.story,
-            status: 'Open' // Default status
+            status: 'Open'
         };
         await db.put('pending_defects', defect);
         if (unitSelect.value === defect.unit && storySelect.value === defect.story) addPinToUI(defect, 'pending');
         closeModal();
+        syncAllPending(); // Trigger auto-sync
     };
 
     cancelBtn.onclick = closeModal;

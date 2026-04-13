@@ -1,6 +1,7 @@
 let dbPromise = null;
 let currentUpdatingDefect = null;
 let updatedDonePhotoBase64 = null;
+let isSyncing = false;
 
 // Initialize IndexedDB
 async function initDB() {
@@ -25,6 +26,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const syncBtn = document.getElementById('sync-btn');
     const adminBtn = document.getElementById('admin-btn');
     const dashboardContent = document.getElementById('dashboard-content');
+    const syncIndicator = document.getElementById('sync-indicator');
 
     // Modals & Elements
     const adminModal = document.getElementById('admin-modal');
@@ -55,7 +57,67 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.location.href = 'defect.html';
     };
 
-    // Load Config for Admin Selectors
+    // --- AUTO-SYNC LOGIC ---
+    function updateSyncUI(status) {
+        if (!syncIndicator) return;
+        if (status === 'syncing') {
+            syncIndicator.style.background = '#1877f2';
+            syncIndicator.style.boxShadow = '0 0 10px #1877f2';
+            syncIndicator.title = 'Syncing in background...';
+        } else if (status === 'online') {
+            syncIndicator.style.background = '#1a7f37';
+            syncIndicator.style.boxShadow = 'none';
+            syncIndicator.title = 'Online - Ready';
+        } else {
+            syncIndicator.style.background = '#cf222e';
+            syncIndicator.style.boxShadow = 'none';
+            syncIndicator.title = 'Offline';
+        }
+    }
+
+    async function syncAllPending() {
+        if (isSyncing || !navigator.onLine) return;
+        
+        const pending = await db.getAll('pending_defects');
+        if (pending.length === 0) {
+            updateSyncUI('online');
+            return;
+        }
+
+        isSyncing = true;
+        updateSyncUI('syncing');
+        let successCount = 0;
+
+        for (const d of pending) {
+            try {
+                const res = await authorizedPost('sync_defects', { defect: d });
+                if (res && (await res.json()).status === 'success') {
+                    await db.delete('pending_defects', d.id);
+                    successCount++;
+                }
+            } catch (e) { console.warn('Background sync failed for item:', d.id); }
+        }
+
+        isSyncing = false;
+        if (successCount > 0) {
+            await refreshConfig(); // Refresh dashboard if items were synced
+        }
+        updateSyncUI(navigator.onLine ? 'online' : 'offline');
+    }
+
+    // Trigger sync on events
+    window.addEventListener('online', syncAllPending);
+    setInterval(syncAllPending, 30000); // Check every 30 seconds
+    syncAllPending(); // Initial check
+
+    // Manual Sync Button
+    syncBtn.onclick = async () => {
+        if (!navigator.onLine) return alert('You are offline. Cannot sync.');
+        await syncAllPending();
+        alert('Manual sync complete.');
+    };
+
+    // --- CONFIG & ADMIN ---
     await loadAdminSelectors();
 
     async function loadAdminSelectors() {
@@ -64,17 +126,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             const config = JSON.parse(cached);
             const unitSelect = document.getElementById('admin-unit-select');
             const storySelect = document.getElementById('admin-story-select');
-            
-            if (config.unitTypes) {
-                unitSelect.innerHTML = config.unitTypes.map(u => `<option value="${u.value}">${u.label}</option>`).join('');
-            }
-            if (config.stories) {
-                storySelect.innerHTML = config.stories.map(s => `<option value="${s.value}">${s.label}</option>`).join('');
-            }
+            if (config.unitTypes) unitSelect.innerHTML = config.unitTypes.map(u => `<option value="${u.value}">${u.label}</option>`).join('');
+            if (config.stories) storySelect.innerHTML = config.stories.map(s => `<option value="${s.value}">${s.label}</option>`).join('');
         }
     }
 
-    // Admin Logic
     document.getElementById('add-unit-btn').onclick = async () => {
         const val = document.getElementById('new-unit-val').value.trim();
         const label = document.getElementById('new-unit-label').value.trim();
@@ -118,7 +174,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // Dashboard Logic
+    // --- DASHBOARD RENDER ---
     await renderDashboard();
 
     async function renderDashboard() {
@@ -205,45 +261,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             status: newStatus,
             donePhoto: updatedDonePhotoBase64 || currentUpdatingDefect.donePhoto
         };
-        delete updated.isSynced; // Don't store UI state
+        delete updated.isSynced;
 
         await db.put('pending_defects', updated);
         detailModal.style.display = 'none';
         await renderDashboard();
-        alert('Update saved locally. Click "Sync to GA" to upload changes.');
+        syncAllPending(); // Trigger auto-sync immediately
     };
 
     closeDetailBtn.onclick = () => detailModal.style.display = 'none';
-
-    // Sync Logic
-    let isSyncing = false;
-    window.onbeforeunload = () => isSyncing ? 'Sync in progress...' : null;
-
-    syncBtn.onclick = async () => {
-        const pending = await db.getAll('pending_defects');
-        if (pending.length === 0) return alert('No pending updates to sync.');
-        
-        isSyncing = true;
-        syncBtn.disabled = true;
-        let success = 0;
-
-        for (const d of pending) {
-            syncBtn.textContent = `Syncing... (${success + 1}/${pending.length})`;
-            try {
-                const res = await authorizedPost('sync_defects', { defect: d });
-                if (res && (await res.json()).status === 'success') {
-                    await db.delete('pending_defects', d.id);
-                    success++;
-                }
-            } catch (e) { console.error(e); }
-        }
-
-        alert(`Sync Complete. Updated ${success} records.`);
-        isSyncing = false;
-        syncBtn.disabled = false;
-        syncBtn.textContent = 'Sync to GA';
-        await refreshConfig();
-    };
 
     async function authorizedPost(action, payload) {
         const res = await fetch(GA_BACKEND_URL, {
@@ -254,12 +280,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 ...payload
             })
         });
-        if (res.status === 401) { 
-            alert('Session expired.'); 
-            localStorage.removeItem('user_session'); 
-            window.location.href = 'index.html'; 
-            return null; 
-        }
+        if (res.status === 401) { localStorage.removeItem('user_session'); window.location.href = 'index.html'; return null; }
         return res;
     }
 });

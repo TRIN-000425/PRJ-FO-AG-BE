@@ -10,9 +10,11 @@
     <link rel="apple-touch-icon" href="assets/icon.svg">
 </head>
 <body>
-    <div style="position: fixed; top: 10px; right: 15px; font-size: 0.7rem; color: var(--text-muted); opacity: 0.5; z-index: 10000;">v1.1.2</div>
     <header>
-        <span>Defect Dashboard</span>
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <span>Defect Dashboard</span>
+            <div id="sync-indicator" style="width: 8px; height: 8px; border-radius: 50%; background: #ccc;" title="Sync Status"></div>
+        </div>
         <div style="display: flex; gap: 12px;">
             <button id="admin-btn" class="primary" style="width: auto; padding: 8px 15px; font-size: 0.8rem; display: none;">Project Setup</button>
             <button id="new-report-btn" class="success" style="width: auto; padding: 8px 15px; font-size: 0.8rem;">New Report</button>
@@ -135,5 +137,6 @@
             });
         }
     </script>
+    <div style="position: fixed; bottom: 10px; right: 15px; font-size: 0.7rem; color: var(--text-muted); opacity: 0.5; z-index: 10000;">v1.1.3</div>
 </body>
 </html>
