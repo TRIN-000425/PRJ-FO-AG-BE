@@ -375,10 +375,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     function fixMapUrl(url) {
         if (!url) return url;
         const trimmed = url.trim();
-        if (trimmed.includes('drive.google.com')) {
-            const match = trimmed.match(/\/d\/([^/]+)/) || trimmed.match(/id=([^&]+)/);
+        // Support /d/, id=, and open?id= or uc?id=
+        if (trimmed.includes('drive.google.com') || trimmed.includes('googledrive.com')) {
+            const match = trimmed.match(/\/d\/([^/?]+)/) || 
+                          trimmed.match(/id=([^&?]+)/) || 
+                          trimmed.match(/[^/]+$/); // Last segment fallback
             if (match && match[1]) {
                 return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w1600`;
+            }
+            // If we have an ID but not in standard format
+            const idMatch = trimmed.split('id=')[1] || trimmed.split('/d/')[1];
+            if (idMatch) {
+                const cleanId = idMatch.split(/[&?]/)[0];
+                return `https://drive.google.com/thumbnail?id=${cleanId}&sz=w1600`;
             }
         }
         return trimmed;

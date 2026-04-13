@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pwa-defect-v15';
+const CACHE_NAME = 'pwa-defect-v16';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -56,7 +56,8 @@ self.addEventListener('fetch', (event) => {
       caches.match(event.request).then((cached) => {
         const networked = fetch(event.request)
           .then((response) => {
-            if (response && response.status === 200) {
+            // Allow caching status 200 AND status 0 (opaque cross-origin)
+            if (response && (response.status === 200 || response.status === 0)) {
               const cacheCopy = response.clone();
               caches.open(CACHE_NAME).then((cache) => cache.put(event.request, cacheCopy));
             }

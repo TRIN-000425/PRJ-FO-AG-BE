@@ -255,12 +255,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     function fixMapUrl(url) {
         if (!url) return url;
         const trimmed = url.trim();
-        // Convert various Google Drive link styles to a direct viewable format
-        if (trimmed.includes('drive.google.com')) {
-            const match = trimmed.match(/\/d\/([^/]+)/) || trimmed.match(/id=([^&]+)/);
+        if (trimmed.includes('drive.google.com') || trimmed.includes('googledrive.com')) {
+            const match = trimmed.match(/\/d\/([^/?]+)/) || 
+                          trimmed.match(/id=([^&?]+)/);
             if (match && match[1]) {
-                // thumbnail sz=w1600 is very reliable for public/shared-link drive images
                 return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w1600`;
+            }
+            const idMatch = trimmed.split('id=')[1] || trimmed.split('/d/')[1];
+            if (idMatch) {
+                const cleanId = idMatch.split(/[&?]/)[0];
+                return `https://drive.google.com/thumbnail?id=${cleanId}&sz=w1600`;
             }
         }
         return trimmed;
