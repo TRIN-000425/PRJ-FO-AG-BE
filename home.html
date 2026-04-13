@@ -82,6 +82,26 @@
                         <button id="add-map-url-btn" class="primary" style="width: auto; padding: 0 20px;">Add URL</button>
                     </div>
                 </div>
+
+                <!-- Section 4: Data Overview -->
+                <div class="neu-inset" style="padding: 20px; border-radius: 15px;">
+                    <h4 style="color: var(--accent-color); margin-bottom: 5px;">Current Project Data</h4>
+                    <p style="font-size: 0.8rem; margin-bottom: 15px;">Overview of mapped Unit Numbers, Types, and available Floor Plans.</p>
+                    <div style="max-height: 300px; overflow-y: auto;">
+                        <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.8rem;">
+                            <thead>
+                                <tr style="border-bottom: 2px solid var(--border-color); color: var(--text-muted);">
+                                    <th style="padding: 10px;">Unit Number</th>
+                                    <th style="padding: 10px;">Type</th>
+                                    <th style="padding: 10px;">Floor Plans</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin-data-table-body">
+                                <!-- Populated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
 
             <button id="close-admin-btn" class="danger" style="margin-top: 30px;">Close Configuration</button>
@@ -141,7 +161,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/idb@8/build/umd.js"></script>
     <script src="config.js"></script>
-    <script src="home-logic.js?v=1.1.5"></script>
+    <script src="home-logic.js?v=1.1.6"></script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
@@ -149,6 +169,6 @@
             });
         }
     </script>
-    <div style="position: fixed; bottom: 10px; right: 15px; font-size: 0.7rem; color: var(--text-muted); opacity: 0.5; z-index: 10000;">v1.1.5</div>
+    <div style="position: fixed; bottom: 10px; right: 15px; font-size: 0.7rem; color: var(--text-muted); opacity: 0.5; z-index: 10000;">v1.1.6</div>
 </body>
 </html>

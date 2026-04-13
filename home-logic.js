@@ -128,6 +128,24 @@ document.addEventListener('DOMContentLoaded', async () => {
             const storySelect = document.getElementById('admin-story-select');
             if (config.unitTypes) unitSelect.innerHTML = config.unitTypes.map(u => `<option value="${u.value}">${u.label}</option>`).join('');
             if (config.stories) storySelect.innerHTML = config.stories.map(s => `<option value="${s.value}">${s.label}</option>`).join('');
+
+            // Populate Data Table
+            const tbody = document.getElementById('admin-data-table-body');
+            if (tbody && config.unitNumbers) {
+                let html = '';
+                config.unitNumbers.forEach(un => {
+                    const matchingMaps = (config.maps || []).filter(m => m.unit === un.type);
+                    const floors = matchingMaps.map(m => m.story).join(', ') || '<span style="color: var(--text-muted); opacity: 0.5;">No maps</span>';
+                    html += `
+                        <tr style="border-bottom: 1px solid var(--border-color);">
+                            <td style="padding: 10px;">${un.number}</td>
+                            <td style="padding: 10px;">${un.type}</td>
+                            <td style="padding: 10px;">${floors}</td>
+                        </tr>
+                    `;
+                });
+                tbody.innerHTML = html;
+            }
         }
     }
 
