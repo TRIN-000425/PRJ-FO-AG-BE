@@ -136,10 +136,25 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     syncBtn.onclick = async () => {
         if (!navigator.onLine) return alert('Offline');
-        showLoader('Syncing defects...');
-        await syncAllPending();
-        hideLoader();
-        alert('Sync complete');
+        showLoader('Syncing data & checking for app updates...');
+        try {
+            await syncAllPending();
+            
+            // Check for latest version on GitHub Pages
+            if ('serviceWorker' in navigator) {
+                const registration = await navigator.serviceWorker.getRegistration();
+                if (registration) {
+                    await registration.update();
+                    console.log('App update check triggered');
+                }
+            }
+
+            alert('Sync complete. Data saved and checked for updates.');
+        } catch (e) {
+            alert('Sync failed: ' + e.toString());
+        } finally {
+            hideLoader();
+        }
     };
 
     // --- RENDER & LOGIC ---

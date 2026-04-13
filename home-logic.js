@@ -141,11 +141,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Manual Sync Button
     syncBtn.onclick = async () => {
         if (!navigator.onLine) return alert('You are offline. Cannot sync.');
-        showLoader('Syncing defects to Google Sheets...');
+        showLoader('Syncing data & checking for app updates...');
         try {
+            // 1. Sync data to Google Apps Script
             await syncAllPending();
             await refreshConfig(); // Force fetch latest synced data from GA
-            alert('Manual sync complete. Dashboard updated.');
+            
+            // 2. Check for latest version on GitHub Pages
+            if ('serviceWorker' in navigator) {
+                const registration = await navigator.serviceWorker.getRegistration();
+                if (registration) {
+                    await registration.update();
+                    console.log('App update check triggered');
+                }
+            }
+
+            alert('Sync complete. Data updated and checked for the latest version.');
         } catch (e) {
             alert('Sync error: ' + e.toString());
         } finally {
