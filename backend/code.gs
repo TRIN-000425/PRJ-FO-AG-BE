@@ -12,6 +12,7 @@ const CONFIG = {
     STORIES: "Stories",
     MAPS: "Maps",
     DEFECTS: "Defects",
+    UNIT_NUMBERS: "UnitNumbers",
     LOGS: "Logs"
   }
 };
@@ -57,11 +58,22 @@ function doPost(e) {
     if (action === 'add_story') return handleAddConfig(CONFIG.SHEET_NAMES.STORIES, [data.value, data.label, ""]);
     if (action === 'upload_map') return handleUploadMap(data.unit, data.story, data.imageBlob);
     if (action === 'add_map_url') return handleUpdateMapUrl(data.unit, data.story, data.mapUrl);
+    if (action === 'add_unit_numbers') return handleBulkAddUnitNumbers(data.units);
 
     return createResponse({ status: 'error', message: 'Unknown action' });
   } catch (err) {
     return createResponse({ status: 'error', message: 'API Error: ' + err.toString() });
   }
+}
+
+function handleBulkAddUnitNumbers(units) {
+  if (!units || !Array.isArray(units)) return createResponse({ status: 'error', message: 'Invalid units array.' });
+  const sheet = SpreadsheetApp.openById(getSpreadsheetId()).getSheetByName(CONFIG.SHEET_NAMES.UNIT_NUMBERS);
+  const rows = units.map(u => [u.number, u.type]);
+  if (rows.length > 0) {
+    sheet.getRange(sheet.getLastRow() + 1, 1, rows.length, 2).setValues(rows);
+  }
+  return createResponse({ status: 'success', message: `Added ${rows.length} units.` });
 }
 
 function handleUpdateMapUrl(unit, story, url) {
@@ -256,13 +268,15 @@ function handleGetConfig() {
     `${CONFIG.SHEET_NAMES.UNITS}!A2:B`,
     `${CONFIG.SHEET_NAMES.STORIES}!A2:B`,
     `${CONFIG.SHEET_NAMES.MAPS}!A2:C`,
-    `${CONFIG.SHEET_NAMES.DEFECTS}!A2:K`
+    `${CONFIG.SHEET_NAMES.DEFECTS}!A2:K`,
+    `${CONFIG.SHEET_NAMES.UNIT_NUMBERS}!A2:B`
   ];
   const response = Sheets.Spreadsheets.Values.batchGet(getSpreadsheetId(), { ranges: ranges });
   const unitTypes = response.valueRanges[0].values || [];
   const stories = response.valueRanges[1].values || [];
   const maps = response.valueRanges[2] ? (response.valueRanges[2].values || []) : [];
   const defects = response.valueRanges[3] ? (response.valueRanges[3].values || []) : [];
+  const unitNumbers = response.valueRanges[4] ? (response.valueRanges[4].values || []) : [];
 
   return createResponse({
     status: 'success',
@@ -270,6 +284,7 @@ function handleGetConfig() {
       unitTypes: unitTypes.map(r => ({ value: (r[0]||"").toString().trim(), label: (r[1]||"").toString().trim() })),
       stories: stories.map(r => ({ value: (r[0]||"").toString().trim(), label: (r[1]||"").toString().trim() })),
       maps: maps.map(r => ({ unit: (r[0]||"").toString().trim(), story: (r[1]||"").toString().trim(), mapUrl: (r[2]||"").toString().trim() })),
+      unitNumbers: unitNumbers.map(r => ({ number: (r[0]||"").toString().trim(), type: (r[1]||"").toString().trim() })),
       syncedDefects: defects.map(r => ({
         timestamp: r[0],
         user: r[1],
@@ -301,7 +316,8 @@ function initializeProject() {
   setupSheet(ss, CONFIG.SHEET_NAMES.UNITS, ["Value", "Label"], [["Type-A", "Type A"], ["Type-B", "Type B"]]);
   setupSheet(ss, CONFIG.SHEET_NAMES.STORIES, ["Value", "Label"], [["L1", "Level 1"], ["L2", "Level 2"]]);
   setupSheet(ss, CONFIG.SHEET_NAMES.MAPS, ["UnitType", "Story", "MapURL"], []);
-  setupSheet(ss, CONFIG.SHEET_NAMES.DEFECTS, ["Timestamp", "User", "UnitType", "Story", "X_Pos", "Y_Pos", "Description", "Photo_URL", "Defect_ID", "Status", "Done_Photo_URL"], []);
+  setupSheet(ss, CONFIG.SHEET_NAMES.DEFECTS, ["Timestamp", "User", "UnitNumber", "Story", "X_Pos", "Y_Pos", "Description", "Photo_URL", "Defect_ID", "Status", "Done_Photo_URL"], []);
+  setupSheet(ss, CONFIG.SHEET_NAMES.UNIT_NUMBERS, ["UnitNumber", "UnitType"], []);
   setupSheet(ss, CONFIG.SHEET_NAMES.LOGS, ["Timestamp", "User", "Action", "Error"], []);
   return "Project Initialized Successfully! ID: " + ss.getId();
 }

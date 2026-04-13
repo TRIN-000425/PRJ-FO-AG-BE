@@ -32,17 +32,25 @@
                 <!-- Section 1: Units -->
                 <div class="neu-inset" style="padding: 20px; border-radius: 15px;">
                     <h4 style="color: var(--accent-color); margin-bottom: 5px;">Step 1: Define Unit Types</h4>
-                    <p style="font-size: 0.8rem; margin-bottom: 15px;">Add the different types of units in this project (e.g., Studio, 2-BR).</p>
+                    <p style="font-size: 0.8rem; margin-bottom: 15px;">Add the structural types (e.g., Studio, 2-BR, T7).</p>
                     <div style="display: flex; gap: 10px;">
-                        <input type="text" id="new-unit-val" placeholder="ID (Type-A)" style="flex: 1;">
-                        <input type="text" id="new-unit-label" placeholder="Display Name" style="flex: 1;">
+                        <input type="text" id="new-unit-val" placeholder="ID (T7)" style="flex: 1;">
+                        <input type="text" id="new-unit-label" placeholder="Display Name (Type 7)" style="flex: 1;">
                         <button id="add-unit-btn" class="primary" style="width: auto; padding: 0 20px;">Add</button>
                     </div>
                 </div>
 
+                <!-- Section 1b: Unit Numbers -->
+                <div class="neu-inset" style="padding: 20px; border-radius: 15px;">
+                    <h4 style="color: var(--accent-color); margin-bottom: 5px;">Step 2: Define Specific Unit Numbers</h4>
+                    <p style="font-size: 0.8rem; margin-bottom: 15px;">Map physical unit numbers to their structural types. Paste a list (one per line) in "Number, Type" format.</p>
+                    <textarea id="bulk-units-input" rows="4" placeholder="A-101, T7&#10;A-102, T7" style="width: 100%; margin-bottom: 10px;"></textarea>
+                    <button id="bulk-add-units-btn" class="primary" style="width: auto; padding: 0 20px;">Bulk Add Units</button>
+                </div>
+
                 <!-- Section 2: Stories -->
                 <div class="neu-inset" style="padding: 20px; border-radius: 15px;">
-                    <h4 style="color: var(--accent-color); margin-bottom: 5px;">Step 2: Define Stories / Floors</h4>
+                    <h4 style="color: var(--accent-color); margin-bottom: 5px;">Step 3: Define Stories / Floors</h4>
                     <p style="font-size: 0.8rem; margin-bottom: 15px;">Add the floor levels available for this project (e.g., L1, Rooftop).</p>
                     <div style="display: flex; gap: 10px;">
                         <input type="text" id="new-story-val" list="common-stories" placeholder="ID (L1)" style="flex: 1;">
@@ -133,7 +141,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/idb@8/build/umd.js"></script>
     <script src="config.js"></script>
-    <script src="home-logic.js?v=1.1.4"></script>
+    <script src="home-logic.js?v=1.1.5"></script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
@@ -141,6 +149,6 @@
             });
         }
     </script>
-    <div style="position: fixed; bottom: 10px; right: 15px; font-size: 0.7rem; color: var(--text-muted); opacity: 0.5; z-index: 10000;">v1.1.4</div>
+    <div style="position: fixed; bottom: 10px; right: 15px; font-size: 0.7rem; color: var(--text-muted); opacity: 0.5; z-index: 10000;">v1.1.5</div>
 </body>
 </html>

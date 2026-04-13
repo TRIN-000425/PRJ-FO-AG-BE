@@ -147,6 +147,25 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (res && (await res.json()).status === 'success') { alert('Story added!'); await refreshConfig(); }
     };
 
+    document.getElementById('bulk-add-units-btn').onclick = async () => {
+        const raw = document.getElementById('bulk-units-input').value.trim();
+        if (!raw) return alert('Paste unit list first');
+        
+        const units = raw.split('\n').map(line => {
+            const [num, typ] = line.split(',').map(s => s.trim());
+            return num && typ ? { number: num, type: typ } : null;
+        }).filter(u => u !== null);
+
+        if (units.length === 0) return alert('Invalid format. Use "Number, Type"');
+
+        const res = await authorizedPost('add_unit_numbers', { units });
+        if (res && (await res.json()).status === 'success') {
+            alert(`Added ${units.length} units!`);
+            document.getElementById('bulk-units-input').value = '';
+            await refreshConfig();
+        }
+    };
+
     document.getElementById('upload-map-btn').onclick = async () => {
         const file = document.getElementById('map-upload-input').files[0];
         if (!file) return alert('Select PNG');

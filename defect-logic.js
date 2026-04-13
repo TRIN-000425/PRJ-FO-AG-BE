@@ -23,7 +23,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const db = await initDB();
     const mapContainer = document.getElementById('map-container');
     const floorplanImg = document.getElementById('floorplan-img');
-    const unitSelect = document.getElementById('unit-type-select');
+    const unitSelect = document.getElementById('unit-number-select');
     const storySelect = document.getElementById('story-select');
     const unitDisplay = document.getElementById('current-unit-display');
     const floorDisplay = document.getElementById('current-floor-display');
@@ -122,8 +122,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     function renderSelectors(config) {
         const prevUnit = unitSelect.value;
         const prevStory = storySelect.value;
-        if (config.unitTypes) {
-            unitSelect.innerHTML = config.unitTypes.map(u => `<option value="${sanitizeHTML(u.value)}">${sanitizeHTML(u.label)}</option>`).join('');
+        if (config.unitNumbers) {
+            unitSelect.innerHTML = config.unitNumbers.map(u => `<option value="${sanitizeHTML(u.number)}">${sanitizeHTML(u.number)} (${sanitizeHTML(u.type)})</option>`).join('');
         }
         if (config.stories) {
             storySelect.innerHTML = config.stories.map(s => `<option value="${sanitizeHTML(s.value)}">${sanitizeHTML(s.label)}</option>`).join('');
@@ -134,16 +134,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     async function updateSelection() {
-        const unit = unitSelect.value.trim();
+        const unitNumber = unitSelect.value.trim();
         const story = storySelect.value.trim();
-        unitDisplay.textContent = unit;
+        
+        // Find mapped unit type
+        const unitMapping = projectConfig.unitNumbers ? projectConfig.unitNumbers.find(u => u.number === unitNumber) : null;
+        const unitType = unitMapping ? unitMapping.type : unitNumber;
+
+        unitDisplay.textContent = unitNumber;
         floorDisplay.textContent = story;
         pinsContainer.innerHTML = '';
         let customMapUrl = null;
 
         if (projectConfig.maps) {
+            // Use unitType for map lookup
             const currentMap = projectConfig.maps.find(m => 
-                (m.unit || '').toString().trim().toLowerCase() === unit.toLowerCase() && 
+                (m.unit || '').toString().trim().toLowerCase() === unitType.toLowerCase() && 
                 (m.story || '').toString().trim().toLowerCase() === story.toLowerCase()
             );
             if (currentMap && currentMap.mapUrl) {
@@ -151,7 +157,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
         
-        const finalUrl = customMapUrl || `assets/${unit}_${story}.png`;
+        const finalUrl = customMapUrl || `assets/${unitType}_${story}.png`;
         if (floorplanImg.src !== finalUrl) {
             floorplanImg.src = finalUrl;
         }
@@ -168,14 +174,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             projectConfig.syncedDefects.forEach(d => {
                 const dUnit = (d.unit || '').toString().trim();
                 const dStory = (d.story || '').toString().trim();
-                if (dUnit === unit && dStory === story) addPinToUI(d, 'synced');
+                if (dUnit === unitNumber && dStory === story) addPinToUI(d, 'synced');
             });
         }
         const pending = await db.getAll('pending_defects');
         pending.forEach(d => {
             const dUnit = (d.unit || '').toString().trim();
             const dStory = (d.story || '').toString().trim();
-            if (dUnit === unit && dStory === story) addPinToUI(d, 'pending');
+            if (dUnit === unitNumber && dStory === story) addPinToUI(d, 'pending');
         });
     }
 
