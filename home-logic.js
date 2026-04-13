@@ -148,7 +148,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             const config = JSON.parse(cached);
             const unitSelect = document.getElementById('admin-unit-select');
             const storySelect = document.getElementById('admin-story-select');
-            if (config.unitTypes) unitSelect.innerHTML = config.unitTypes.map(u => `<option value="${u.value}">${u.label}</option>`).join('');
+            const newUnitTypeSelect = document.getElementById('new-unit-number-type');
+
+            if (config.unitTypes) {
+                const options = config.unitTypes.map(u => `<option value="${u.value}">${u.label}</option>`).join('');
+                unitSelect.innerHTML = options;
+                if (newUnitTypeSelect) newUnitTypeSelect.innerHTML = '<option value="">Select Type...</option>' + options;
+            }
             if (config.stories) storySelect.innerHTML = config.stories.map(s => `<option value="${s.value}">${s.label}</option>`).join('');
 
             // Populate Data Table
@@ -171,63 +177,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    document.getElementById('add-unit-btn').onclick = async () => {
-        const val = document.getElementById('new-unit-val').value.trim();
-        const label = document.getElementById('new-unit-label').value.trim();
-        if (!val || !label) return alert('Enter both ID and Name');
-        
-        showLoader('Adding unit type...');
-        const res = await authorizedPost('add_unit', { value: val, label: label });
-        if (res && (await res.json()).status === 'success') { 
-            await refreshConfig(); 
-            document.getElementById('new-unit-val').value = '';
-            document.getElementById('new-unit-label').value = '';
-        }
-        hideLoader();
-    };
+    document.getElementById('add-single-unit-btn').onclick = async () => {
+        const num = document.getElementById('new-unit-number-val').value.trim();
+        const typ = document.getElementById('new-unit-number-type').value;
+        if (!num || !typ) return alert('Enter Unit Number and Select Type');
 
-    document.getElementById('add-story-btn').onclick = async () => {
-        const val = document.getElementById('new-story-val').value.trim();
-        const label = document.getElementById('new-story-label').value.trim();
-        if (!val || !label) return alert('Enter both ID and Name');
-        
-        showLoader('Adding story...');
-        const res = await authorizedPost('add_story', { value: val, label: label });
-        if (res && (await res.json()).status === 'success') { 
-            await refreshConfig(); 
-            document.getElementById('new-story-val').value = '';
-            document.getElementById('new-story-label').value = '';
-        }
-        hideLoader();
-    };
-
-    document.getElementById('bulk-add-units-btn').onclick = async () => {
-        const raw = document.getElementById('bulk-units-input').value.trim();
-        if (!raw) return alert('Paste unit list first');
-        
-        const units = raw.split('\n').map(line => {
-            // Split by comma OR tab
-            const parts = line.split(/[,\t]/).map(s => s.trim());
-            const num = parts[0];
-            const typ = parts[1];
-            return num && typ ? { number: num, type: typ } : null;
-        }).filter(u => u !== null);
-
-        if (units.length === 0) return alert('Invalid format. Use "Number, Type" or copy-paste from Excel.');
-
-        showLoader(`Adding ${units.length} units...`);
+        showLoader(`Adding unit ${num}...`);
         try {
-            const res = await authorizedPost('add_unit_numbers', { units });
+            const res = await authorizedPost('add_unit_numbers', { units: [{ number: num, type: typ }] });
             if (res && (await res.json()).status === 'success') {
-                document.getElementById('bulk-units-input').value = '';
+                document.getElementById('new-unit-number-val').value = '';
                 await refreshConfig();
-                alert(`Successfully added ${units.length} units!`);
+                alert(`Unit ${num} added!`);
             }
-        } catch (e) {
-            alert('Failed to add units. Check connection.');
-        } finally {
-            hideLoader();
-        }
+        } catch (e) { alert('Failed to add unit.'); }
+        finally { hideLoader(); }
     };
 
     document.getElementById('upload-map-btn').onclick = async () => {

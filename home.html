@@ -43,9 +43,14 @@
                 <!-- Section 1b: Unit Numbers -->
                 <div class="neu-inset" style="padding: 20px; border-radius: 15px;">
                     <h4 style="color: var(--accent-color); margin-bottom: 5px;">Step 2: Define Specific Unit Numbers</h4>
-                    <p style="font-size: 0.8rem; margin-bottom: 15px;">Map physical unit numbers to their structural types. Paste a list (one per line) in "Number, Type" format.</p>
-                    <textarea id="bulk-units-input" rows="4" placeholder="A-101, T7&#10;A-102, T7" style="width: 100%; margin-bottom: 10px;"></textarea>
-                    <button id="bulk-add-units-btn" class="primary" style="width: auto; padding: 0 20px;">Bulk Add Units</button>
+                    <p style="font-size: 0.8rem; margin-bottom: 15px;">Map a physical unit number to its structural type.</p>
+                    <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                        <input type="text" id="new-unit-number-val" placeholder="Unit No (e.g. A-101)" style="flex: 1.5;">
+                        <select id="new-unit-number-type" style="flex: 1;">
+                            <option value="">Select Type...</option>
+                        </select>
+                    </div>
+                    <button id="add-single-unit-btn" class="primary" style="width: auto; padding: 0 20px;">Add Unit Number</button>
                 </div>
 
                 <!-- Section 2: Stories -->
@@ -169,7 +174,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/idb@8/build/umd.js"></script>
     <script src="config.js"></script>
-    <script src="home-logic.js?v=1.1.9"></script>
+    <script src="home-logic.js?v=1.2.0"></script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
@@ -177,6 +182,6 @@
             });
         }
     </script>
-    <div style="position: fixed; bottom: 10px; right: 15px; font-size: 0.7rem; color: var(--text-muted); opacity: 0.5; z-index: 10000;">v1.1.9</div>
+    <div style="position: fixed; bottom: 10px; right: 15px; font-size: 0.7rem; color: var(--text-muted); opacity: 0.5; z-index: 10000;">v1.2.0</div>
 </body>
 </html>
