@@ -42,6 +42,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const detailDesc = document.getElementById('detail-desc');
     const detailImg = document.getElementById('detail-img');
     const closeDetailBtn = document.getElementById('close-detail-btn');
+    const confirmPinBtn = document.getElementById('confirm-pin-btn');
+    const activeCrosshair = document.getElementById('active-crosshair');
 
     // Global Loader helpers
     window.showLoader = (text = 'Loading...') => {
@@ -58,6 +60,38 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     backBtn.onclick = () => window.location.href = 'home.html';
+
+    // --- targeting logic ---
+    let activePinContext = null;
+
+    mapContainer.onclick = (e) => {
+        if (modal.style.display === 'block') return;
+        // Check if the click target is the container, the floorplan, or the crosshair itself
+        if (e.target !== mapContainer && e.target !== floorplanImg && e.target !== activeCrosshair) return;
+
+        const rect = mapContainer.getBoundingClientRect();
+        const x = ((e.clientX - rect.left) / rect.width) * 100;
+        const y = ((e.clientY - rect.top) / rect.height) * 100;
+
+        activePinContext = {
+            unit: unitSelect.value,
+            story: storySelect.value,
+            position: { x, y }
+        };
+
+        // Position crosshair
+        activeCrosshair.style.left = x + '%';
+        activeCrosshair.style.top = y + '%';
+        activeCrosshair.style.display = 'block';
+
+        // Show confirm button
+        confirmPinBtn.style.display = 'block';
+    };
+
+    confirmPinBtn.onclick = () => {
+        modal.style.display = 'block';
+        confirmPinBtn.style.display = 'none';
+    };
 
     // --- AUTO-SYNC LOGIC ---
     function updateSyncUI(status) {
@@ -269,19 +303,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    let activePinContext = null;
-    mapContainer.onclick = (e) => {
-        if (modal.style.display === 'block') return;
-        if (e.target !== mapContainer && e.target !== floorplanImg) return;
-        const rect = mapContainer.getBoundingClientRect();
-        activePinContext = {
-            unit: unitSelect.value,
-            story: storySelect.value,
-            position: { x: ((e.clientX - rect.left) / rect.width) * 100, y: ((e.clientY - rect.top) / rect.height) * 100 }
-        };
-        modal.style.display = 'block';
-    };
-
     photoInput.onchange = (e) => {
         const file = e.target.files[0];
         if (file) {
@@ -324,6 +345,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         compressedPhotoData = null; 
         photoInput.value = '';
         activePinContext = null;
+        if (activeCrosshair) activeCrosshair.style.display = 'none';
+        if (confirmPinBtn) confirmPinBtn.style.display = 'none';
     }
 });
 
