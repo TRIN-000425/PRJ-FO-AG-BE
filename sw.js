@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pwa-defect-v9';
+const CACHE_NAME = 'pwa-defect-v10';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -56,16 +56,17 @@ self.addEventListener('fetch', (event) => {
   // Strategy for everything else (Network First, fallback to Cache)
   event.respondWith(
     fetch(event.request).catch(() => {
-      // If it's a POST request and we're offline, return a JSON response instead of a network error
+      // If it's a POST request and we're offline
       if (event.request.method === 'POST') {
         return new Response(JSON.stringify({ 
           status: 'offline', 
-          message: 'You are offline. Data saved locally to browser database.' 
+          message: 'You are offline. Data saved locally.' 
         }), {
           headers: { 'Content-Type': 'application/json' }
         });
       }
-      return caches.match(event.request);
+      // Match cache, ignoring search params (?v=1.2.4)
+      return caches.match(event.request, { ignoreSearch: true });
     })
   );
 });
