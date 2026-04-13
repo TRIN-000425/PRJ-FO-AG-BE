@@ -144,7 +144,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         showLoader('Syncing defects to Google Sheets...');
         try {
             await syncAllPending();
-            alert('Manual sync complete.');
+            await refreshConfig(); // Force fetch latest synced data from GA
+            alert('Manual sync complete. Dashboard updated.');
         } catch (e) {
             alert('Sync error: ' + e.toString());
         } finally {
