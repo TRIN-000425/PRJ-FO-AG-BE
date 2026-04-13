@@ -387,6 +387,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     // --- DASHBOARD RENDER ---
     await renderDashboard();
 
+    // GLOBAL STORE for defects to avoid passing large Base64 in onclick
+    window.allRenderedDefects = {};
+
     async function renderDashboard() {
         dashboardContent.innerHTML = '<div style="text-align: center; padding: 50px;"><p>Loading lifecycle data...</p></div>';
         let projectConfig = { syncedDefects: [] };
@@ -402,6 +405,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             ...projectConfig.syncedDefects.map(d => ({ ...d, isSynced: true })),
             ...pendingDefects.map(d => ({ ...d, isSynced: false }))
         ];
+
+        // Clear and Repopulate Global Store
+        window.allRenderedDefects = {};
+        allDefects.forEach(d => { window.allRenderedDefects[d.id] = d; });
 
         if (allDefects.length === 0) {
             dashboardContent.innerHTML = '<div class="neu-inset" style="text-align: center; padding: 50px; border-radius: 20px;"><p>No defect reports found.</p></div>';
@@ -421,16 +428,20 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <div class="unit-section">
                     <h3 class="unit-header">${unit}</h3>
                     <div class="defect-grid">
-                        ${defects.map(d => `
-                            <div class="defect-card neu-raised" onclick='window.showDefectDetail(${JSON.stringify(d).replace(/'/g, "&apos;")})'>
-                                <span class="badge ${d.status || 'Open'}">${d.status || 'Open'}</span>
-                                ${!d.isSynced ? '<span class="badge pending" style="top: auto; bottom: 10px;">Pending Sync</span>' : ''}
-                                <img src="${d.donePhotoUrl || d.photo || d.photoUrl || 'assets/floorplan-placeholder.png'}" class="defect-card-img">
-                                <h4>${d.story || 'N/A'}</h4>
-                                <p class="desc">${d.description || 'No description'}</p>
-                                <p class="date">${new Date(d.timestamp).toLocaleDateString()}</p>
-                            </div>
-                        `).join('')}
+                        ${defects.map(d => {
+                            const displayPhoto = d.donePhotoUrl ? fixMapUrl(d.donePhotoUrl) : 
+                                               (d.photo || (d.photoUrl ? fixMapUrl(d.photoUrl) : 'assets/floorplan-placeholder.png'));
+                            return `
+                                <div class="defect-card neu-raised" onclick="window.showDefectDetailById('${d.id}')">
+                                    <span class="badge ${d.status || 'Open'}">${d.status || 'Open'}</span>
+                                    ${!d.isSynced ? '<span class="badge pending" style="top: auto; bottom: 10px;">Pending Sync</span>' : ''}
+                                    <img src="${displayPhoto}" class="defect-card-img" onerror="this.src='assets/floorplan-placeholder.png'">
+                                    <h4>${d.story || 'N/A'}</h4>
+                                    <p class="desc">${d.description || 'No description'}</p>
+                                    <p class="date">${new Date(d.timestamp).toLocaleDateString()}</p>
+                                </div>
+                            `;
+                        }).join('')}
                     </div>
                 </div>
             `;
@@ -438,12 +449,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         dashboardContent.innerHTML = html;
     }
 
-    window.showDefectDetail = (defect) => {
+    window.showDefectDetailById = (id) => {
+        const defect = window.allRenderedDefects[id];
+        if (!defect) return;
+        
         currentUpdatingDefect = defect;
         updatedDonePhotoBase64 = null;
         detailStatusText.textContent = defect.status || 'Open';
         detailDesc.textContent = defect.description;
-        detailImg.src = defect.photo || defect.photoUrl || '';
+        
+        // Use fixMapUrl for URLs, fallback to Base64 photo
+        const mainPhoto = defect.photo || (defect.photoUrl ? fixMapUrl(defect.photoUrl) : '');
+        detailImg.src = mainPhoto;
+        detailImg.style.display = mainPhoto ? 'block' : 'none';
+        
         updateStatusSelect.value = defect.status || 'Open';
         donePhotoGroup.style.display = (updateStatusSelect.value === 'Done') ? 'block' : 'none';
         detailModal.style.display = 'block';

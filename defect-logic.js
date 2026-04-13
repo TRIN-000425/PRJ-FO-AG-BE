@@ -269,26 +269,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     unitSelect.onchange = updateSelection;
     storySelect.onchange = updateSelection;
 
-    function addPinToUI(defect, type) {
-        if (!defect || !defect.position || isNaN(defect.position.x) || isNaN(defect.position.y)) return;
-        const pin = document.createElement('div');
-        pin.className = 'pin';
-        pin.style.left = defect.position.x + '%'; 
-        pin.style.top = defect.position.y + '%';
-        pin.style.width = '18px';
-        pin.style.height = '18px';
-        pin.style.border = '2px solid white';
-        const colors = { Open: '#d29922', Onprogress: '#1877f2', Done: '#1a7f37' };
-        pin.style.backgroundColor = colors[defect.status || 'Open'] || 'red';
-        pin.onclick = (e) => { e.stopPropagation(); showDetail(defect, type); };
-        pinsContainer.appendChild(pin);
-    }
-
     function showDetail(defect, type) {
         detailStatus.textContent = defect.status || 'Open';
         detailDesc.textContent = defect.description;
-        detailImg.src = defect.photo || defect.photoUrl || '';
-        detailImg.style.display = (detailImg.src) ? 'block' : 'none';
+        const mainPhoto = defect.photo || (defect.photoUrl ? fixMapUrl(defect.photoUrl) : '');
+        detailImg.src = mainPhoto;
+        detailImg.style.display = (mainPhoto) ? 'block' : 'none';
         detailModal.style.display = 'block';
     }
 
