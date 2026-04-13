@@ -63,8 +63,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     document.getElementById('refresh-admin-table-btn').onclick = async () => {
         showLoader('Refreshing project configuration...');
-        await refreshConfig();
-        hideLoader();
+        try {
+            await refreshConfig();
+        } catch (e) {
+            alert('Refresh failed: ' + e.toString());
+        } finally {
+            hideLoader();
+        }
     };
 
     logoutBtn.onclick = () => {
@@ -111,9 +116,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         for (const d of pending) {
             try {
                 const res = await authorizedPost('sync_defects', { defect: d });
-                if (res && (await res.json()).status === 'success') {
-                    await db.delete('pending_defects', d.id);
-                    successCount++;
+                if (res) {
+                    const data = await res.json();
+                    if (data.status === 'success') {
+                        await db.delete('pending_defects', d.id);
+                        successCount++;
+                    }
                 }
             } catch (e) { console.warn('Background sync failed for item:', d.id); }
         }
@@ -134,9 +142,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     syncBtn.onclick = async () => {
         if (!navigator.onLine) return alert('You are offline. Cannot sync.');
         showLoader('Syncing defects to Google Sheets...');
-        await syncAllPending();
-        hideLoader();
-        alert('Manual sync complete.');
+        try {
+            await syncAllPending();
+            alert('Manual sync complete.');
+        } catch (e) {
+            alert('Sync error: ' + e.toString());
+        } finally {
+            hideLoader();
+        }
     };
 
     // --- CONFIG & ADMIN ---
@@ -144,7 +157,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     async function loadAdminSelectors() {
         const cached = localStorage.getItem('project_config');
-        if (cached) {
+        if (!cached) return;
+        try {
             const config = JSON.parse(cached);
             const unitSelect = document.getElementById('admin-unit-select');
             const storySelect = document.getElementById('admin-story-select');
@@ -152,30 +166,78 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             if (config.unitTypes) {
                 const options = config.unitTypes.map(u => `<option value="${u.value}">${u.label}</option>`).join('');
-                unitSelect.innerHTML = options;
+                if (unitSelect) unitSelect.innerHTML = options;
                 if (newUnitTypeSelect) newUnitTypeSelect.innerHTML = '<option value="">Select Type...</option>' + options;
             }
-            if (config.stories) storySelect.innerHTML = config.stories.map(s => `<option value="${s.value}">${s.label}</option>`).join('');
+            if (config.stories && storySelect) {
+                storySelect.innerHTML = config.stories.map(s => `<option value="${s.value}">${s.label}</option>`).join('');
+            }
 
             // Populate Data Table
             const tbody = document.getElementById('admin-data-table-body');
-            if (tbody && config.unitNumbers) {
-                let html = '';
-                config.unitNumbers.forEach(un => {
-                    const matchingMaps = (config.maps || []).filter(m => m.unit === un.type);
-                    const floors = matchingMaps.map(m => m.story).join(', ') || '<span style="color: var(--text-muted); opacity: 0.5;">No maps</span>';
-                    html += `
-                        <tr style="border-bottom: 1px solid var(--border-color);">
-                            <td style="padding: 10px;">${un.number}</td>
-                            <td style="padding: 10px;">${un.type}</td>
-                            <td style="padding: 10px;">${floors}</td>
-                        </tr>
-                    `;
-                });
-                tbody.innerHTML = html;
+            if (tbody) {
+                if (config.unitNumbers && config.unitNumbers.length > 0) {
+                    let html = '';
+                    config.unitNumbers.forEach(un => {
+                        const matchingMaps = (config.maps || []).filter(m => m.unit === un.type);
+                        const floors = matchingMaps.map(m => m.story).join(', ') || '<span style="color: var(--text-muted); opacity: 0.5;">No maps</span>';
+                        html += `
+                            <tr style="border-bottom: 1px solid var(--border-color);">
+                                <td style="padding: 10px;">${un.number}</td>
+                                <td style="padding: 10px;">${un.type}</td>
+                                <td style="padding: 10px;">${floors}</td>
+                            </tr>
+                        `;
+                    });
+                    tbody.innerHTML = html;
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="3" style="padding: 20px; text-align: center; color: var(--text-muted);">No unit numbers defined yet.</td></tr>';
+                }
             }
-        }
+        } catch (e) { console.error('Error parsing config for UI:', e); }
     }
+
+    document.getElementById('add-unit-btn').onclick = async () => {
+        const val = document.getElementById('new-unit-val').value.trim();
+        const label = document.getElementById('new-unit-label').value.trim();
+        if (!val || !label) return alert('Enter both ID and Name');
+        
+        showLoader('Adding unit type...');
+        try {
+            const res = await authorizedPost('add_unit', { value: val, label: label });
+            if (res) {
+                const data = await res.json();
+                if (data.status === 'success') { 
+                    await refreshConfig(); 
+                    document.getElementById('new-unit-val').value = '';
+                    document.getElementById('new-unit-label').value = '';
+                    alert('Unit type added!');
+                } else { alert('Error: ' + data.message); }
+            }
+        } catch (e) { alert('Add Unit failed: ' + e.toString()); }
+        finally { hideLoader(); }
+    };
+
+    document.getElementById('add-story-btn').onclick = async () => {
+        const val = document.getElementById('new-story-val').value.trim();
+        const label = document.getElementById('new-story-label').value.trim();
+        if (!val || !label) return alert('Enter both ID and Name');
+        
+        showLoader('Adding story...');
+        try {
+            const res = await authorizedPost('add_story', { value: val, label: label });
+            if (res) {
+                const data = await res.json();
+                if (data.status === 'success') { 
+                    await refreshConfig(); 
+                    document.getElementById('new-story-val').value = '';
+                    document.getElementById('new-story-label').value = '';
+                    alert('Story added!');
+                } else { alert('Error: ' + data.message); }
+            }
+        } catch (e) { alert('Add Story failed: ' + e.toString()); }
+        finally { hideLoader(); }
+    };
 
     document.getElementById('add-single-unit-btn').onclick = async () => {
         const num = document.getElementById('new-unit-number-val').value.trim();
@@ -191,17 +253,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                     document.getElementById('new-unit-number-val').value = '';
                     await refreshConfig();
                     alert(`Unit ${num} added!`);
-                } else {
-                    alert('Backend Error: ' + (data.message || 'Unknown error'));
-                }
-            } else {
-                alert('Connection error. Please try again.');
-            }
-        } catch (e) { 
-            alert('App Error: ' + e.toString()); 
-        } finally { 
-            hideLoader(); 
-        }
+                } else { alert('Backend Error: ' + (data.message || 'Unknown error')); }
+            } else { alert('Connection error. Please try again.'); }
+        } catch (e) { alert('App Error: ' + e.toString()); }
+        finally { hideLoader(); }
     };
 
     document.getElementById('upload-map-btn').onclick = async () => {
@@ -217,15 +272,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                     story: document.getElementById('admin-story-select').value, 
                     imageBlob: e.target.result 
                 });
-                if (res && (await res.json()).status === 'success') { 
-                    await refreshConfig(); 
-                    alert('Map uploaded successfully!');
+                if (res) {
+                    const data = await res.json();
+                    if (data.status === 'success') { 
+                        await refreshConfig(); 
+                        alert('Map uploaded successfully!');
+                    } else { alert('Upload error: ' + data.message); }
                 }
-            } catch (err) {
-                alert('Upload failed.');
-            } finally {
-                hideLoader();
-            }
+            } catch (err) { alert('Upload failed: ' + err.toString()); }
+            finally { hideLoader(); }
         };
         reader.readAsDataURL(file);
     };
@@ -235,28 +290,39 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!url) return alert('Enter URL');
         
         showLoader('Saving Map URL...');
-        const res = await authorizedPost('add_map_url', { 
-            unit: document.getElementById('admin-unit-select').value, 
-            story: document.getElementById('admin-story-select').value, 
-            mapUrl: url 
-        });
-        if (res && (await res.json()).status === 'success') { 
-            await refreshConfig(); 
-            document.getElementById('map-url-input').value = '';
-            alert('Map URL saved!');
-        }
-        hideLoader();
+        try {
+            const res = await authorizedPost('add_map_url', { 
+                unit: document.getElementById('admin-unit-select').value, 
+                story: document.getElementById('admin-story-select').value, 
+                mapUrl: url 
+            });
+            if (res) {
+                const data = await res.json();
+                if (data.status === 'success') { 
+                    await refreshConfig(); 
+                    document.getElementById('map-url-input').value = '';
+                    alert('Map URL saved!');
+                } else { alert('Error: ' + data.message); }
+            }
+        } catch (e) { alert('Save Map URL failed: ' + e.toString()); }
+        finally { hideLoader(); }
     };
 
     async function refreshConfig() {
-        const res = await authorizedPost('get_config', {});
-        if (res) {
-            const result = await res.json();
-            if (result.status === 'success') {
-                localStorage.setItem('project_config', JSON.stringify(result.config));
-                await loadAdminSelectors();
-                await renderDashboard();
+        try {
+            const res = await authorizedPost('get_config', {});
+            if (res) {
+                const result = await res.json();
+                if (result.status === 'success') {
+                    localStorage.setItem('project_config', JSON.stringify(result.config));
+                    await loadAdminSelectors();
+                    await renderDashboard();
+                } else {
+                    console.error('Config refresh backend error:', result.message);
+                }
             }
+        } catch (e) {
+            console.error('Refresh Config Exception:', e);
         }
     }
 
