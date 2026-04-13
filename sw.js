@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pwa-defect-v13';
+const CACHE_NAME = 'pwa-defect-v14';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -19,13 +19,13 @@ const STATIC_ASSETS = [
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      console.log('Service Worker: Caching Assets');
+      console.log('Service Worker: Caching Static Assets');
       return cache.addAll(STATIC_ASSETS);
     }).then(() => self.skipWaiting())
   );
 });
 
-// Activate Event (Cleanup old caches)
+// Activate Event
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
@@ -45,7 +45,8 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // 1. Strategy for Google Drive Images & other external images (Stale-While-Revalidate)
+  // 1. Strategy for Images (Cache-First, then Network Update)
+  // This ensures that maps and photos are served instantly from cache if available.
   if (
     event.request.destination === 'image' || 
     url.hostname.includes('googleusercontent.com') || 
@@ -62,7 +63,7 @@ self.addEventListener('fetch', (event) => {
             return response;
           })
           .catch(() => {
-            // Fallback for missing floorplans if completely offline and not in cache
+            // If offline and not in cache, try to return the placeholder for maps
             if (url.pathname.includes('.png') || url.href.includes('thumbnail')) {
               return caches.match('./assets/floorplan-placeholder.png');
             }
@@ -74,29 +75,25 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 2. Ignore non-GET requests for standard caching
-  if (event.request.method !== 'GET') {
-    // Specialized offline response for POST API calls
-    if (event.request.method === 'POST') {
-      event.respondWith(
-        fetch(event.request).catch(() => {
-          return new Response(JSON.stringify({ 
-            status: 'offline', 
-            message: 'Action recorded locally. Will sync when online.' 
-          }), {
-            headers: { 'Content-Type': 'application/json' }
-          });
-        })
-      );
-    }
+  // 2. Specialized response for POST API calls
+  if (event.request.method === 'POST') {
+    event.respondWith(
+      fetch(event.request).catch(() => {
+        return new Response(JSON.stringify({ 
+          status: 'offline', 
+          message: 'Offline: Data saved locally and will sync later.' 
+        }), {
+          headers: { 'Content-Type': 'application/json' }
+        });
+      })
+    );
     return;
   }
 
-  // 3. Strategy for everything else (Network First, fallback to Cache)
+  // 3. Standard GET requests (Network First, fallback to Cache)
   event.respondWith(
     fetch(event.request)
       .then((response) => {
-        // If successful, update the cache for this request
         if (response && response.status === 200 && response.type === 'basic') {
           const cacheCopy = response.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(event.request, cacheCopy));
@@ -104,11 +101,8 @@ self.addEventListener('fetch', (event) => {
         return response;
       })
       .catch(() => {
-        // Match cache, ignoring search params (?v=1.2.6)
         return caches.match(event.request, { ignoreSearch: true }).then((cached) => {
           if (cached) return cached;
-          
-          // Fallback for navigation requests (HTML pages)
           if (event.request.mode === 'navigate') {
             return caches.match('./index.html');
           }

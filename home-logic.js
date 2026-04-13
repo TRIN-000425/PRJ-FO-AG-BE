@@ -318,6 +318,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                     localStorage.setItem('project_config', JSON.stringify(result.config));
                     await loadAdminSelectors();
                     await renderDashboard();
+                    
+                    // PROACTIVE OFFLINE STORAGE
+                    warmCache(result.config);
                 } else {
                     console.error('Config refresh backend error:', result.message);
                 }
@@ -327,6 +330,49 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
+    // --- PROACTIVE CACHING FOR FULL OFFLINE ---
+    function warmCache(config) {
+        if (!config || !navigator.onLine) return;
+        const urls = new Set();
+        
+        // 1. Collect Map URLs
+        if (config.maps) {
+            config.maps.forEach(m => {
+                if (m.mapUrl) urls.add(fixMapUrl(m.mapUrl));
+                // Also cache local assets if any
+                if (m.unit && m.story) urls.add(`assets/${m.unit}_${m.story}.png`);
+            });
+        }
+        
+        // 2. Collect Synced Defect Photos
+        if (config.syncedDefects) {
+            config.syncedDefects.forEach(d => {
+                if (d.photoUrl) urls.add(d.photoUrl);
+                if (d.donePhotoUrl) urls.add(d.donePhotoUrl);
+                if (d.photo) urls.add(d.photo);
+            });
+        }
+
+        console.log(`Warming cache with ${urls.size} external assets...`);
+        urls.forEach(url => {
+            if (url && (url.startsWith('http') || url.startsWith('assets/'))) {
+                fetch(url, { mode: 'no-cors' }).catch(() => {});
+            }
+        });
+    }
+
+    function fixMapUrl(url) {
+        if (!url) return url;
+        const trimmed = url.trim();
+        if (trimmed.includes('drive.google.com')) {
+            const match = trimmed.match(/\/d\/([^/]+)/) || trimmed.match(/id=([^&]+)/);
+            if (match && match[1]) {
+                return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w1600`;
+            }
+        }
+        return trimmed;
+    }
+
     // --- DASHBOARD RENDER ---
     await renderDashboard();
 
@@ -334,7 +380,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         dashboardContent.innerHTML = '<div style="text-align: center; padding: 50px;"><p>Loading lifecycle data...</p></div>';
         let projectConfig = { syncedDefects: [] };
         const cached = localStorage.getItem('project_config');
-        if (cached) projectConfig = JSON.parse(cached);
+        if (cached) {
+            projectConfig = JSON.parse(cached);
+            // Proactively warm cache even for existing config
+            warmCache(projectConfig);
+        }
 
         const pendingDefects = await db.getAll('pending_defects');
         const allDefects = [
