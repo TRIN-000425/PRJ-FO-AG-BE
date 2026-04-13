@@ -3,6 +3,9 @@ let currentUpdatingDefect = null;
 let updatedDonePhotoBase64 = null;
 let isSyncing = false;
 
+// GLOBAL STORE for defects to avoid passing large Base64 in onclick
+window.allRenderedDefects = {};
+
 // Initialize IndexedDB
 async function initDB() {
     if (dbPromise) return dbPromise;
@@ -14,6 +17,54 @@ async function initDB() {
         },
     });
     return dbPromise;
+}
+
+// Global functions for modal access
+window.showDefectDetailById = (id) => {
+    const defect = window.allRenderedDefects[id];
+    if (!defect) return;
+    
+    currentUpdatingDefect = defect;
+    updatedDonePhotoBase64 = null;
+    
+    const detailStatusText = document.getElementById('detail-status-text');
+    const detailDesc = document.getElementById('detail-desc');
+    const detailImg = document.getElementById('detail-img');
+    const updateStatusSelect = document.getElementById('update-status-select');
+    const donePhotoGroup = document.getElementById('done-photo-group');
+    const detailModal = document.getElementById('detail-modal');
+
+    if (detailStatusText) detailStatusText.textContent = defect.status || 'Open';
+    if (detailDesc) detailDesc.textContent = defect.description;
+    
+    // Use fixMapUrl for URLs, fallback to Base64 photo
+    const mainPhoto = defect.photo || (defect.photoUrl ? fixMapUrl(defect.photoUrl) : '');
+    if (detailImg) {
+        detailImg.src = mainPhoto;
+        detailImg.style.display = mainPhoto ? 'block' : 'none';
+    }
+    
+    if (updateStatusSelect) updateStatusSelect.value = defect.status || 'Open';
+    if (donePhotoGroup) donePhotoGroup.style.display = (updateStatusSelect.value === 'Done') ? 'block' : 'none';
+    if (detailModal) detailModal.style.display = 'block';
+};
+
+function fixMapUrl(url) {
+    if (!url) return url;
+    const trimmed = url.trim();
+    if (trimmed.includes('drive.google.com') || trimmed.includes('googledrive.com')) {
+        const match = trimmed.match(/\/d\/([^/?]+)/) || 
+                      trimmed.match(/id=([^&?]+)/);
+        if (match && match[1]) {
+            return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w1600`;
+        }
+        const idMatch = trimmed.split('id=')[1] || trimmed.split('/d/')[1];
+        if (idMatch) {
+            const cleanId = idMatch.split(/[&?]/)[0];
+            return `https://drive.google.com/thumbnail?id=${cleanId}&sz=w1600`;
+        }
+    }
+    return trimmed;
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -37,10 +88,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const donePhotoGroup = document.getElementById('done-photo-group');
     const donePhotoInput = document.getElementById('done-photo-input');
     const saveUpdateBtn = document.getElementById('save-update-btn');
-    
-    const detailStatusText = document.getElementById('detail-status-text');
-    const detailDesc = document.getElementById('detail-desc');
-    const detailImg = document.getElementById('detail-img');
 
     // Global Loader helpers
     window.showLoader = (text = 'Loading...') => {
@@ -372,33 +419,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    function fixMapUrl(url) {
-        if (!url) return url;
-        const trimmed = url.trim();
-        // Support /d/, id=, and open?id= or uc?id=
-        if (trimmed.includes('drive.google.com') || trimmed.includes('googledrive.com')) {
-            const match = trimmed.match(/\/d\/([^/?]+)/) || 
-                          trimmed.match(/id=([^&?]+)/) || 
-                          trimmed.match(/[^/]+$/); // Last segment fallback
-            if (match && match[1]) {
-                return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w1600`;
-            }
-            // If we have an ID but not in standard format
-            const idMatch = trimmed.split('id=')[1] || trimmed.split('/d/')[1];
-            if (idMatch) {
-                const cleanId = idMatch.split(/[&?]/)[0];
-                return `https://drive.google.com/thumbnail?id=${cleanId}&sz=w1600`;
-            }
-        }
-        return trimmed;
-    }
-
     // --- DASHBOARD RENDER ---
-    await renderDashboard();
-
-    // GLOBAL STORE for defects to avoid passing large Base64 in onclick
-    window.allRenderedDefects = {};
-
     async function renderDashboard() {
         dashboardContent.innerHTML = '<div style="text-align: center; padding: 50px;"><p>Loading lifecycle data...</p></div>';
         let projectConfig = { syncedDefects: [] };
@@ -458,24 +479,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         dashboardContent.innerHTML = html;
     }
 
-    window.showDefectDetailById = (id) => {
-        const defect = window.allRenderedDefects[id];
-        if (!defect) return;
-        
-        currentUpdatingDefect = defect;
-        updatedDonePhotoBase64 = null;
-        detailStatusText.textContent = defect.status || 'Open';
-        detailDesc.textContent = defect.description;
-        
-        // Use fixMapUrl for URLs, fallback to Base64 photo
-        const mainPhoto = defect.photo || (defect.photoUrl ? fixMapUrl(defect.photoUrl) : '');
-        detailImg.src = mainPhoto;
-        detailImg.style.display = mainPhoto ? 'block' : 'none';
-        
-        updateStatusSelect.value = defect.status || 'Open';
-        donePhotoGroup.style.display = (updateStatusSelect.value === 'Done') ? 'block' : 'none';
-        detailModal.style.display = 'block';
-    };
+    await renderDashboard();
 
     updateStatusSelect.onchange = () => {
         donePhotoGroup.style.display = (updateStatusSelect.value === 'Done') ? 'block' : 'none';
