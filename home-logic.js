@@ -384,16 +384,27 @@ document.addEventListener('DOMContentLoaded', async () => {
     closeDetailBtn.onclick = () => detailModal.style.display = 'none';
 
     async function authorizedPost(action, payload) {
-        const res = await fetch(GA_BACKEND_URL, {
-            method: 'POST', mode: 'cors',
-            body: JSON.stringify({
-                action,
-                auth: { username: session.username, deviceId: session.deviceId, deviceToken: session.deviceToken },
-                ...payload
-            })
-        });
-        if (res.status === 401) { localStorage.removeItem('user_session'); window.location.href = 'index.html'; return null; }
-        return res;
+        try {
+            const res = await fetch(GA_BACKEND_URL, {
+                method: 'POST', 
+                mode: 'cors',
+                headers: { 'Content-Type': 'text/plain' }, // Critical GAS workaround
+                body: JSON.stringify({
+                    action,
+                    auth: { username: session.username, deviceId: session.deviceId, deviceToken: session.deviceToken },
+                    ...payload
+                })
+            });
+            if (res.status === 401) { 
+                localStorage.removeItem('user_session'); 
+                window.location.href = 'index.html'; 
+                return null; 
+            }
+            return res;
+        } catch (err) {
+            console.error('API Post failed:', err);
+            return null;
+        }
     }
 });
 
