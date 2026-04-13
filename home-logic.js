@@ -42,18 +42,29 @@ document.addEventListener('DOMContentLoaded', async () => {
     const detailDesc = document.getElementById('detail-desc');
     const detailImg = document.getElementById('detail-img');
 
+    // Global Loader helpers
+    window.showLoader = (text = 'Loading...') => {
+        const loader = document.getElementById('global-loader');
+        const loaderText = document.getElementById('loader-text');
+        if (loader) {
+            if (loaderText) loaderText.textContent = text;
+            loader.style.display = 'flex';
+        }
+    };
+    window.hideLoader = () => {
+        const loader = document.getElementById('global-loader');
+        if (loader) loader.style.display = 'none';
+    };
+
     // Admin UI Initialization
     if (session.role === 'Admin') adminBtn.style.display = 'block';
     adminBtn.onclick = () => adminModal.style.display = 'block';
     closeAdminBtn.onclick = () => adminModal.style.display = 'none';
 
     document.getElementById('refresh-admin-table-btn').onclick = async () => {
-        const btn = document.getElementById('refresh-admin-table-btn');
-        btn.textContent = 'Refreshing...';
-        btn.disabled = true;
+        showLoader('Refreshing project configuration...');
         await refreshConfig();
-        btn.textContent = 'Refresh Table';
-        btn.disabled = false;
+        hideLoader();
     };
 
     logoutBtn.onclick = () => {
@@ -122,7 +133,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Manual Sync Button
     syncBtn.onclick = async () => {
         if (!navigator.onLine) return alert('You are offline. Cannot sync.');
+        showLoader('Syncing defects to Google Sheets...');
         await syncAllPending();
+        hideLoader();
         alert('Manual sync complete.');
     };
 
@@ -162,16 +175,30 @@ document.addEventListener('DOMContentLoaded', async () => {
         const val = document.getElementById('new-unit-val').value.trim();
         const label = document.getElementById('new-unit-label').value.trim();
         if (!val || !label) return alert('Enter both ID and Name');
+        
+        showLoader('Adding unit type...');
         const res = await authorizedPost('add_unit', { value: val, label: label });
-        if (res && (await res.json()).status === 'success') { alert('Unit added!'); await refreshConfig(); }
+        if (res && (await res.json()).status === 'success') { 
+            await refreshConfig(); 
+            document.getElementById('new-unit-val').value = '';
+            document.getElementById('new-unit-label').value = '';
+        }
+        hideLoader();
     };
 
     document.getElementById('add-story-btn').onclick = async () => {
         const val = document.getElementById('new-story-val').value.trim();
         const label = document.getElementById('new-story-label').value.trim();
         if (!val || !label) return alert('Enter both ID and Name');
+        
+        showLoader('Adding story...');
         const res = await authorizedPost('add_story', { value: val, label: label });
-        if (res && (await res.json()).status === 'success') { alert('Story added!'); await refreshConfig(); }
+        if (res && (await res.json()).status === 'success') { 
+            await refreshConfig(); 
+            document.getElementById('new-story-val').value = '';
+            document.getElementById('new-story-label').value = '';
+        }
+        hideLoader();
     };
 
     document.getElementById('bulk-add-units-btn').onclick = async () => {
@@ -188,25 +215,43 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (units.length === 0) return alert('Invalid format. Use "Number, Type" or copy-paste from Excel.');
 
-        const res = await authorizedPost('add_unit_numbers', { units });
-        if (res && (await res.json()).status === 'success') {
-            alert(`Added ${units.length} units!`);
-            document.getElementById('bulk-units-input').value = '';
-            await refreshConfig(); // This will rebuild the table
+        showLoader(`Adding ${units.length} units...`);
+        try {
+            const res = await authorizedPost('add_unit_numbers', { units });
+            if (res && (await res.json()).status === 'success') {
+                document.getElementById('bulk-units-input').value = '';
+                await refreshConfig();
+                alert(`Successfully added ${units.length} units!`);
+            }
+        } catch (e) {
+            alert('Failed to add units. Check connection.');
+        } finally {
+            hideLoader();
         }
     };
 
     document.getElementById('upload-map-btn').onclick = async () => {
         const file = document.getElementById('map-upload-input').files[0];
         if (!file) return alert('Select PNG');
+        
+        showLoader('Uploading floor plan to Google Drive...');
         const reader = new FileReader();
         reader.onload = async (e) => {
-            const res = await authorizedPost('upload_map', { 
-                unit: document.getElementById('admin-unit-select').value, 
-                story: document.getElementById('admin-story-select').value, 
-                imageBlob: e.target.result 
-            });
-            if (res && (await res.json()).status === 'success') { alert('Uploaded!'); await refreshConfig(); }
+            try {
+                const res = await authorizedPost('upload_map', { 
+                    unit: document.getElementById('admin-unit-select').value, 
+                    story: document.getElementById('admin-story-select').value, 
+                    imageBlob: e.target.result 
+                });
+                if (res && (await res.json()).status === 'success') { 
+                    await refreshConfig(); 
+                    alert('Map uploaded successfully!');
+                }
+            } catch (err) {
+                alert('Upload failed.');
+            } finally {
+                hideLoader();
+            }
         };
         reader.readAsDataURL(file);
     };
@@ -214,12 +259,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('add-map-url-btn').onclick = async () => {
         const url = document.getElementById('map-url-input').value.trim();
         if (!url) return alert('Enter URL');
+        
+        showLoader('Saving Map URL...');
         const res = await authorizedPost('add_map_url', { 
             unit: document.getElementById('admin-unit-select').value, 
             story: document.getElementById('admin-story-select').value, 
             mapUrl: url 
         });
-        if (res && (await res.json()).status === 'success') { alert('Map URL updated!'); await refreshConfig(); }
+        if (res && (await res.json()).status === 'success') { 
+            await refreshConfig(); 
+            document.getElementById('map-url-input').value = '';
+            alert('Map URL saved!');
+        }
+        hideLoader();
     };
 
     async function refreshConfig() {

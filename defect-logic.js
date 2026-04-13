@@ -43,6 +43,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     const detailImg = document.getElementById('detail-img');
     const closeDetailBtn = document.getElementById('close-detail-btn');
 
+    // Global Loader helpers
+    window.showLoader = (text = 'Loading...') => {
+        const loader = document.getElementById('global-loader');
+        const loaderText = document.getElementById('loader-text');
+        if (loader) {
+            if (loaderText) loaderText.textContent = text;
+            loader.style.display = 'flex';
+        }
+    };
+    window.hideLoader = () => {
+        const loader = document.getElementById('global-loader');
+        if (loader) loader.style.display = 'none';
+    };
+
     backBtn.onclick = () => window.location.href = 'home.html';
 
     // --- AUTO-SYNC LOGIC ---
@@ -88,7 +102,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     syncBtn.onclick = async () => {
         if (!navigator.onLine) return alert('Offline');
+        showLoader('Syncing defects...');
         await syncAllPending();
+        hideLoader();
         alert('Sync complete');
     };
 
@@ -96,13 +112,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadProjectConfig();
 
     async function loadProjectConfig() {
+        showLoader('Loading project configuration...');
         const cached = localStorage.getItem('project_config');
         if (cached) { projectConfig = JSON.parse(cached); renderSelectors(projectConfig); }
 
         if (typeof GA_BACKEND_URL !== 'undefined' && GA_BACKEND_URL !== 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE') {
             try {
                 const res = await authorizedPost('get_config', {});
-                if (!res) return;
+                if (!res) { hideLoader(); return; }
                 const result = await res.json();
                 if (result.status === 'success') {
                     projectConfig = result.config;
@@ -111,6 +128,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             } catch (err) { console.warn('Offline: Using cache'); }
         }
+        hideLoader();
     }
 
     function sanitizeHTML(str) {

@@ -33,8 +33,13 @@
         </form>
     </div>
 
+    <div id="global-loader" class="global-loader">
+        <div class="spinner"></div>
+        <p id="loader-text">Loading...</p>
+    </div>
+
     <script src="config.js"></script>
-    <script src="app.js?v=1.1.7"></script>
+    <script src="app.js?v=1.1.8"></script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
@@ -55,6 +60,5 @@
             });
         }
     </script>
-    <div style="position: fixed; bottom: 10px; right: 15px; font-size: 0.7rem; color: var(--text-muted); opacity: 0.5; z-index: 10000;">v1.1.7</div>
-    </body>
-</html>
+    <div style="position: fixed; bottom: 10px; right: 15px; font-size: 0.7rem; color: var(--text-muted); opacity: 0.5; z-index: 10000;">v1.1.8</div>
+    </body></html>

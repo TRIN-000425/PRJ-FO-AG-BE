@@ -13,6 +13,20 @@ document.addEventListener('DOMContentLoaded', () => {
     
     let isOtpStep = false;
 
+    // Global Loader helpers
+    window.showLoader = (text = 'Loading...') => {
+        const loader = document.getElementById('global-loader');
+        const loaderText = document.getElementById('loader-text');
+        if (loader) {
+            if (loaderText) loaderText.textContent = text;
+            loader.style.display = 'flex';
+        }
+    };
+    window.hideLoader = () => {
+        const loader = document.getElementById('global-loader');
+        if (loader) loader.style.display = 'none';
+    };
+
     checkLoginState();
 
     function resetLoginState() {
@@ -68,7 +82,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         loginBtn.disabled = true;
-        loginBtn.textContent = 'Connecting...';
+        showLoader(isOtpStep ? 'Verifying OTP...' : 'Authenticating...');
         messageDiv.style.display = 'none';
 
         const payload = { action: 'login', username, password, deviceId };
@@ -125,6 +139,7 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('Fetch error:', error);
             showMessage('Connection error. Check console for details.', 'error');
         } finally {
+            hideLoader();
             loginBtn.disabled = false;
             loginBtn.textContent = isOtpStep ? 'Verify OTP' : 'Login';
         }
