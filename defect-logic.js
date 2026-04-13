@@ -134,27 +134,63 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     async function updateSelection() {
-        const unit = unitSelect.value;
-        const story = storySelect.value;
+        const unit = unitSelect.value.trim();
+        const story = storySelect.value.trim();
         unitDisplay.textContent = unit;
         floorDisplay.textContent = story;
         pinsContainer.innerHTML = '';
         let customMapUrl = null;
+
         if (projectConfig.maps) {
-            const currentMap = projectConfig.maps.find(m => m.unit === unit && m.story === story);
-            if (currentMap && currentMap.mapUrl) customMapUrl = currentMap.mapUrl;
+            const currentMap = projectConfig.maps.find(m => 
+                (m.unit || '').toString().trim().toLowerCase() === unit.toLowerCase() && 
+                (m.story || '').toString().trim().toLowerCase() === story.toLowerCase()
+            );
+            if (currentMap && currentMap.mapUrl) {
+                customMapUrl = fixMapUrl(currentMap.mapUrl);
+            }
         }
-        floorplanImg.src = customMapUrl || `assets/${unit}_${story}.png`;
-        floorplanImg.onerror = () => { floorplanImg.src = 'assets/floorplan-placeholder.png'; };
+        
+        const finalUrl = customMapUrl || `assets/${unit}_${story}.png`;
+        if (floorplanImg.src !== finalUrl) {
+            floorplanImg.src = finalUrl;
+        }
+
+        floorplanImg.onerror = () => { 
+            // Only fall back if we haven't already fallen back to the placeholder
+            if (!floorplanImg.src.includes('placeholder')) {
+                console.warn('Map load failed, using placeholder');
+                floorplanImg.src = 'assets/floorplan-placeholder.png'; 
+            }
+        };
+        
         if (projectConfig.syncedDefects) {
             projectConfig.syncedDefects.forEach(d => {
-                if (d.unit === unit && d.story === story) addPinToUI(d, 'synced');
+                const dUnit = (d.unit || '').toString().trim();
+                const dStory = (d.story || '').toString().trim();
+                if (dUnit === unit && dStory === story) addPinToUI(d, 'synced');
             });
         }
         const pending = await db.getAll('pending_defects');
         pending.forEach(d => {
-            if (d.unit === unit && d.story === story) addPinToUI(d, 'pending');
+            const dUnit = (d.unit || '').toString().trim();
+            const dStory = (d.story || '').toString().trim();
+            if (dUnit === unit && dStory === story) addPinToUI(d, 'pending');
         });
+    }
+
+    function fixMapUrl(url) {
+        if (!url) return url;
+        const trimmed = url.trim();
+        // Convert various Google Drive link styles to a direct viewable format
+        if (trimmed.includes('drive.google.com')) {
+            const match = trimmed.match(/\/d\/([^/]+)/) || trimmed.match(/id=([^&]+)/);
+            if (match && match[1]) {
+                // thumbnail sz=w1600 is very reliable for public/shared-link drive images
+                return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w1600`;
+            }
+        }
+        return trimmed;
     }
 
     unitSelect.onchange = updateSelection;

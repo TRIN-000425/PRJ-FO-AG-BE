@@ -69,6 +69,10 @@
                         <input type="file" id="map-upload-input" accept="image/png" style="flex: 1;">
                         <button id="upload-map-btn" class="success" style="width: auto; padding: 0 20px;">Upload PNG</button>
                     </div>
+                    <div style="display: flex; align-items: center; gap: 15px; margin-top: 15px;">
+                        <input type="text" id="map-url-input" placeholder="Or paste Map URL (Google Drive)" style="flex: 1;">
+                        <button id="add-map-url-btn" class="primary" style="width: auto; padding: 0 20px;">Add URL</button>
+                    </div>
                 </div>
             </div>
 
@@ -129,7 +133,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/idb@8/build/umd.js"></script>
     <script src="config.js"></script>
-    <script src="home-logic.js"></script>
+    <script src="home-logic.js?v=1.1.4"></script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
@@ -137,6 +141,6 @@
             });
         }
     </script>
-    <div style="position: fixed; bottom: 10px; right: 15px; font-size: 0.7rem; color: var(--text-muted); opacity: 0.5; z-index: 10000;">v1.1.3</div>
+    <div style="position: fixed; bottom: 10px; right: 15px; font-size: 0.7rem; color: var(--text-muted); opacity: 0.5; z-index: 10000;">v1.1.4</div>
 </body>
 </html>

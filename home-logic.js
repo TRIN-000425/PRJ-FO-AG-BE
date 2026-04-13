@@ -162,6 +162,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         reader.readAsDataURL(file);
     };
 
+    document.getElementById('add-map-url-btn').onclick = async () => {
+        const url = document.getElementById('map-url-input').value.trim();
+        if (!url) return alert('Enter URL');
+        const res = await authorizedPost('add_map_url', { 
+            unit: document.getElementById('admin-unit-select').value, 
+            story: document.getElementById('admin-story-select').value, 
+            mapUrl: url 
+        });
+        if (res && (await res.json()).status === 'success') { alert('Map URL updated!'); await refreshConfig(); }
+    };
+
     async function refreshConfig() {
         const res = await authorizedPost('get_config', {});
         if (res) {
