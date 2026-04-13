@@ -1,23 +1,22 @@
 document.addEventListener('DOMContentLoaded', () => {
     const loginContainer = document.getElementById('login-container');
-    const dashboardContainer = document.getElementById('dashboard-container');
     const loginForm = document.getElementById('login-form');
     const loginBtn = document.getElementById('login-btn');
-    const logoutBtn = document.getElementById('logout-btn');
     const messageDiv = document.getElementById('message');
-    const userDisplay = document.getElementById('user-display');
     const otpGroup = document.getElementById('otp-group');
     const otpInput = document.getElementById('otp');
     const passwordGroup = document.getElementById('password-group');
     const changeUsernameLink = document.getElementById('change-username-link');
 
     // GA_BACKEND_URL is loaded from config.js
+    console.log('Login logic initialized. Backend URL:', GA_BACKEND_URL);
     
     let isOtpStep = false;
 
     checkLoginState();
 
     function resetLoginState() {
+        console.log('Resetting login state');
         isOtpStep = false;
         otpGroup.style.display = 'none';
         passwordGroup.style.display = 'block';
@@ -36,7 +35,6 @@ document.addEventListener('DOMContentLoaded', () => {
     function getDeviceId() {
         let deviceId = localStorage.getItem('device_id');
         if (!deviceId) {
-            // Generate a random UUID-like string for this device
             deviceId = 'dev-' + Math.random().toString(36).substr(2, 9) + '-' + Date.now();
             localStorage.setItem('device_id', deviceId);
         }
@@ -45,10 +43,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function checkLoginState() {
         const user = JSON.parse(localStorage.getItem('user_session'));
-        if (user && user.deviceToken) { // Verify we have the secure token, not just an old session
+        if (user && user.deviceToken) {
+            console.log('Valid session found, redirecting to dashboard');
             showDashboard(user);
         } else {
-            showLogin();
+            console.log('No valid session found');
         }
     }
 
@@ -56,56 +55,58 @@ document.addEventListener('DOMContentLoaded', () => {
         window.location.href = 'home.html';
     }
 
-    function showLogin() {
-        loginContainer.style.display = 'block';
-        dashboardContainer.style.display = 'none';
-    }
-
     loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const username = document.getElementById('username').value;
+        console.log('Login form submitted');
+        
+        const username = document.getElementById('username').value.trim();
         const password = document.getElementById('password').value;
         const deviceId = getDeviceId();
+
+        if (!username || (!isOtpStep && !password)) {
+            return showMessage('Please fill in all fields.', 'error');
+        }
 
         loginBtn.disabled = true;
         loginBtn.textContent = 'Connecting...';
         messageDiv.style.display = 'none';
 
-        // 2. Multi-Step Payload
         const payload = { action: 'login', username, password, deviceId };
         if (isOtpStep) {
             payload.action = 'verify_otp';
-            payload.otp = otpInput.value;
+            payload.otp = otpInput.value.trim();
             if (!payload.otp) {
                 loginBtn.disabled = false;
                 loginBtn.textContent = 'Verify OTP';
-                return showMessage('Please enter the OTP provided by your administrator.', 'error');
+                return showMessage('Please enter the OTP.', 'error');
             }
         }
 
+        console.log('Sending payload:', { ...payload, password: '***' });
+
         try {
             const response = await fetch(GA_BACKEND_URL, {
-                method: 'POST', mode: 'cors',
+                method: 'POST', 
+                mode: 'cors',
+                headers: { 'Content-Type': 'text/plain' }, // GAS workaround for CORS
                 body: JSON.stringify(payload),
             });
 
+            if (!response.ok) throw new Error('Network response was not ok');
+
             const result = await response.json();
+            console.log('Received response:', result);
             
-            // 3. Handle Backend States
             if (result.status === 'requires_otp') {
                 isOtpStep = true;
                 otpGroup.style.display = 'block';
-                passwordGroup.style.display = 'none'; // Hide password input
-                document.getElementById('username').readOnly = true; // Lock username
+                passwordGroup.style.display = 'none';
+                document.getElementById('username').readOnly = true;
                 loginBtn.textContent = 'Verify OTP';
-                
-                // Show the message which contains the deviceId to send to the admin
                 showMessage(result.message, 'error'); 
                 document.getElementById('otp-instruction').innerText = `Device ID: ${deviceId}`;
                 
             } else if (result.status === 'success') {
-                // SECURITY AUDIT FIX: NO PLAINTEXT PASSWORDS!
-                // We only store the server-generated deviceToken.
                 const session = { 
                     username: result.user.username, 
                     deviceId: deviceId,
@@ -114,6 +115,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     role: result.user.role 
                 };
                 localStorage.setItem('user_session', JSON.stringify(session));
+                console.log('Login success, redirecting...');
                 showDashboard(session);
                 
             } else {
@@ -121,31 +123,16 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } catch (error) {
             console.error('Fetch error:', error);
-            showMessage('Connection error. Is GA_BACKEND_URL correct?', 'error');
+            showMessage('Connection error. Check console for details.', 'error');
         } finally {
-            if (!isOtpStep || (isOtpStep && loginBtn.disabled)) {
-                loginBtn.disabled = false;
-                loginBtn.textContent = isOtpStep ? 'Verify OTP' : 'Login';
-            }
+            loginBtn.disabled = false;
+            loginBtn.textContent = isOtpStep ? 'Verify OTP' : 'Login';
         }
-    });
-
-    logoutBtn.addEventListener('click', () => {
-        localStorage.removeItem('user_session'); // Does NOT remove device_id
-        localStorage.removeItem('project_config'); // Clear project config on logout
-        isOtpStep = false;
-        otpGroup.style.display = 'none';
-        passwordGroup.style.display = 'block';
-        document.getElementById('username').readOnly = false;
-        otpInput.value = '';
-        document.getElementById('password').value = '';
-        loginBtn.textContent = 'Login';
-        showLogin();
     });
 
     function showMessage(text, type) {
         messageDiv.textContent = text;
-        messageDiv.className = 'message'; // Reset classes
+        messageDiv.className = 'message';
         if (type) messageDiv.classList.add(type);
         messageDiv.style.display = 'block';
     }
