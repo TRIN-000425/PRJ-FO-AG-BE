@@ -67,13 +67,27 @@ function doPost(e) {
 }
 
 function handleBulkAddUnitNumbers(units) {
-  if (!units || !Array.isArray(units)) return createResponse({ status: 'error', message: 'Invalid units array.' });
-  const sheet = SpreadsheetApp.openById(getSpreadsheetId()).getSheetByName(CONFIG.SHEET_NAMES.UNIT_NUMBERS);
-  const rows = units.map(u => [u.number, u.type]);
-  if (rows.length > 0) {
-    sheet.getRange(sheet.getLastRow() + 1, 1, rows.length, 2).setValues(rows);
+  try {
+    if (!units || !Array.isArray(units)) return createResponse({ status: 'error', message: 'Invalid units data received.' });
+    
+    const ss = SpreadsheetApp.openById(getSpreadsheetId());
+    let sheet = ss.getSheetByName(CONFIG.SHEET_NAMES.UNIT_NUMBERS);
+    
+    // Auto-create sheet if it somehow doesn't exist
+    if (!sheet) {
+      sheet = ss.insertSheet(CONFIG.SHEET_NAMES.UNIT_NUMBERS);
+      sheet.appendRow(["UnitNumber", "UnitType"]);
+      sheet.setFrozenRows(1);
+    }
+
+    const rows = units.map(u => [u.number.toString().trim(), u.type.toString().trim()]);
+    if (rows.length > 0) {
+      sheet.getRange(sheet.getLastRow() + 1, 1, rows.length, 2).setValues(rows);
+    }
+    return createResponse({ status: 'success', message: `Added ${rows.length} units.` });
+  } catch (err) {
+    return createResponse({ status: 'error', message: 'Backend Error: ' + err.toString() });
   }
-  return createResponse({ status: 'success', message: `Added ${rows.length} units.` });
 }
 
 function handleUpdateMapUrl(unit, story, url) {

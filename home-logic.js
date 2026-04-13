@@ -185,13 +185,23 @@ document.addEventListener('DOMContentLoaded', async () => {
         showLoader(`Adding unit ${num}...`);
         try {
             const res = await authorizedPost('add_unit_numbers', { units: [{ number: num, type: typ }] });
-            if (res && (await res.json()).status === 'success') {
-                document.getElementById('new-unit-number-val').value = '';
-                await refreshConfig();
-                alert(`Unit ${num} added!`);
+            if (res) {
+                const data = await res.json();
+                if (data.status === 'success') {
+                    document.getElementById('new-unit-number-val').value = '';
+                    await refreshConfig();
+                    alert(`Unit ${num} added!`);
+                } else {
+                    alert('Backend Error: ' + (data.message || 'Unknown error'));
+                }
+            } else {
+                alert('Connection error. Please try again.');
             }
-        } catch (e) { alert('Failed to add unit.'); }
-        finally { hideLoader(); }
+        } catch (e) { 
+            alert('App Error: ' + e.toString()); 
+        } finally { 
+            hideLoader(); 
+        }
     };
 
     document.getElementById('upload-map-btn').onclick = async () => {
