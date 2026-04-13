@@ -47,6 +47,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     adminBtn.onclick = () => adminModal.style.display = 'block';
     closeAdminBtn.onclick = () => adminModal.style.display = 'none';
 
+    document.getElementById('refresh-admin-table-btn').onclick = async () => {
+        const btn = document.getElementById('refresh-admin-table-btn');
+        btn.textContent = 'Refreshing...';
+        btn.disabled = true;
+        await refreshConfig();
+        btn.textContent = 'Refresh Table';
+        btn.disabled = false;
+    };
+
     logoutBtn.onclick = () => {
         localStorage.removeItem('user_session');
         localStorage.removeItem('project_config');
@@ -170,17 +179,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!raw) return alert('Paste unit list first');
         
         const units = raw.split('\n').map(line => {
-            const [num, typ] = line.split(',').map(s => s.trim());
+            // Split by comma OR tab
+            const parts = line.split(/[,\t]/).map(s => s.trim());
+            const num = parts[0];
+            const typ = parts[1];
             return num && typ ? { number: num, type: typ } : null;
         }).filter(u => u !== null);
 
-        if (units.length === 0) return alert('Invalid format. Use "Number, Type"');
+        if (units.length === 0) return alert('Invalid format. Use "Number, Type" or copy-paste from Excel.');
 
         const res = await authorizedPost('add_unit_numbers', { units });
         if (res && (await res.json()).status === 'success') {
             alert(`Added ${units.length} units!`);
             document.getElementById('bulk-units-input').value = '';
-            await refreshConfig();
+            await refreshConfig(); // This will rebuild the table
         }
     };
 
