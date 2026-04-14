@@ -3,6 +3,7 @@ let currentUpdatingDefect = null;
 let updatedDonePhotoBase64 = null;
 let isSyncing = false;
 let currentView = 'grid';
+const APP_VERSION = "1.6.1";
 
 window.allRenderedDefects = {};
 
@@ -78,6 +79,20 @@ async function getBase64FromUrl(url) {
     });
 }
 
+// --- VERSION CHECKER ---
+async function checkAppVersion() {
+    if (!navigator.onLine) return;
+    try {
+        const res = await fetch('version.json?t=' + Date.now());
+        const data = await res.json();
+        if (data.version && data.version !== APP_VERSION) {
+            const banner = document.getElementById('update-banner');
+            if (banner) banner.style.display = 'block';
+            console.log("New version detected:", data.version);
+        }
+    } catch (e) { console.warn("Version check failed", e); }
+}
+
 // --- GLOBAL MODAL ACCESS ---
 window.showDefectDetailById = (id) => {
     const defect = window.allRenderedDefects[id];
@@ -91,7 +106,7 @@ window.showDefectDetailById = (id) => {
     img.src = mainPhoto;
     img.style.display = mainPhoto ? 'block' : 'none';
     document.getElementById('update-status-select').value = defect.status || 'Open';
-    document.getElementById('done-photo-group').style.display = (document.getElementById('update-status-select').value === 'Done') ? 'block' : 'none';
+    document.getElementById('done-photo-group').style.display = (defect.status === 'Done' || document.getElementById('update-status-select').value === 'Done') ? 'block' : 'none';
     renderTimeline(defect, document.getElementById('defect-timeline'));
     document.getElementById('detail-modal').style.display = 'block';
 };
@@ -232,18 +247,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         const pending = await db.getAll('pending_defects');
         if (pending.length === 0) { updateSyncUI('online'); return; }
-        
-        isSyncing = true; 
-        updateSyncUI('syncing');
-        let success = 0;
+        isSyncing = true; updateSyncUI('syncing');
         for (let i = 0; i < pending.length; i++) {
             try {
                 const res = await authorizedPost('sync_defects', { defect: pending[i] });
-                if (res && (await res.json()).status === 'success') {
-                    await db.delete('pending_defects', pending[i].id);
-                    success++;
-                }
-            } catch (e) { console.warn('Background sync item failed'); }
+                if (res && (await res.json()).status === 'success') await db.delete('pending_defects', pending[i].id);
+            } catch (e) {}
         }
         isSyncing = false;
         if (success > 0) await refreshConfig();
@@ -271,7 +280,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!syncIndicator) return;
         const colors = { syncing: '#1877f2', online: '#1a7f37', offline: '#cf222e' };
         syncIndicator.style.background = colors[status] || '#ccc';
-        syncIndicator.title = status.charAt(0).toUpperCase() + status.slice(1);
     }
 
     // Bindings
@@ -282,40 +290,31 @@ document.addEventListener('DOMContentLoaded', async () => {
     viewListBtn.onclick = () => { currentView = 'list'; viewListBtn.classList.add('success'); viewGridBtn.classList.remove('success'); applyFilters(); };
     
     document.getElementById('banner-sync-btn').onclick = () => {
-        showLoader('Syncing reports...');
+        showLoader('Syncing...');
         syncAllPending().then(() => hideLoader());
     };
 
     document.getElementById('sync-btn').onclick = async () => {
-        showLoader('Full Sync & Update Check...');
+        showLoader('Syncing All...');
         await syncAllPending();
         await refreshConfig();
+        await checkAppVersion();
         if ('serviceWorker' in navigator) { const reg = await navigator.serviceWorker.getRegistration(); if (reg) await reg.update(); }
         hideLoader();
     };
 
-    document.getElementById('refresh-admin-table-btn').onclick = async () => {
-        showLoader('Refreshing...');
-        await refreshConfig();
-        hideLoader();
-    };
-
+    document.getElementById('refresh-admin-table-btn').onclick = refreshConfig;
     document.getElementById('force-purge-btn').onclick = async () => {
-        if (confirm('Clear local cache and re-download?')) {
-            localStorage.removeItem('project_config');
-            await refreshConfig();
-            alert('Reloaded.');
-        }
+        if (confirm('Force purge cache?')) { localStorage.removeItem('project_config'); await refreshConfig(); }
     };
 
-    // Auto-actions
-    window.addEventListener('online', () => {
-        syncAllPending();
-        refreshConfig(); // Automatic pull when signal returns
-    });
-    setInterval(syncAllPending, 15000); // More aggressive heartbeat (15s)
+    // Intervals & Version Check
+    window.addEventListener('online', () => { syncAllPending(); refreshConfig(); checkAppVersion(); });
+    setInterval(syncAllPending, 15000);
+    setInterval(checkAppVersion, 300000); // 5 mins
+    checkAppVersion();
 
-    // Timeline actions
+    // Modal/Update Actions
     document.getElementById('add-comment-btn').onclick = () => {
         const msg = document.getElementById('new-comment-input').value.trim();
         if (!msg || !currentUpdatingDefect) return;
@@ -337,7 +336,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         await db.put('pending_defects', updated);
         document.getElementById('detail-modal').style.display = 'none';
         await renderDashboard();
-        syncAllPending(); // Immediate background sync attempt
+        syncAllPending();
     };
 
     document.getElementById('update-status-select').onchange = () => {

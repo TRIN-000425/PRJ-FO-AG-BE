@@ -2,6 +2,7 @@ let compressedPhotoData = null;
 let projectConfig = { unitTypes: [], stories: [], unitNumbers: [], maps: [], syncedDefects: [] };
 let dbPromise = null;
 let isSyncing = false;
+const APP_VERSION = "1.6.1";
 
 // Initialize IndexedDB
 async function initDB() {
@@ -14,6 +15,18 @@ async function initDB() {
         },
     });
     return dbPromise;
+}
+
+async function checkAppVersion() {
+    if (!navigator.onLine) return;
+    try {
+        const res = await fetch('version.json?t=' + Date.now());
+        const data = await res.json();
+        if (data.version && data.version !== APP_VERSION) {
+            console.log("New version available:", data.version);
+            // On reporting page, maybe don't force reload to avoid losing work, just log
+        }
+    } catch (e) {}
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -101,13 +114,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         updateSyncUI(navigator.onLine ? 'online' : 'offline');
     }
 
-    window.addEventListener('online', () => { syncAllPending(); loadProjectConfig(); });
+    window.addEventListener('online', () => { syncAllPending(); loadProjectConfig(); checkAppVersion(); });
     setInterval(syncAllPending, 15000);
+    setInterval(checkAppVersion, 300000);
     syncAllPending();
+    checkAppVersion();
 
     syncBtn.onclick = async () => {
         showLoader('Full Sync...');
         await syncAllPending();
+        await checkAppVersion();
         if ('serviceWorker' in navigator) { const reg = await navigator.serviceWorker.getRegistration(); if (reg) await reg.update(); }
         hideLoader();
     };
@@ -230,7 +246,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         await db.put('pending_defects', defect);
         updateSelection();
         closeModal();
-        syncAllPending(); // Immediate sync attempt
+        syncAllPending();
     };
 
     unitSelect.onchange = updateSelection;
