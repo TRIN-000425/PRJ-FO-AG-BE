@@ -147,8 +147,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (cached) projectConfig = JSON.parse(cached);
         const pending = await db.getAll('pending_defects');
         masterDefectList = [
-            ...projectConfig.syncedDefects.map(d => ({ ...d, isSynced: true })),
-            ...pending.map(d => ({ ...d, isSynced: false }))
+            ...projectConfig.syncedDefects.map(d => ({ ...d, isSynced: true, history: d.history || [] })),
+            ...pending.map(d => ({ ...d, isSynced: false, history: d.history || [] }))
         ];
         window.allRenderedDefects = {};
         masterDefectList.forEach(d => { window.allRenderedDefects[d.id] = d; });
