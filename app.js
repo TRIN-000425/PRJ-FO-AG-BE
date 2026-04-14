@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const passwordGroup = document.getElementById('password-group');
     const otpInput = document.getElementById('otp');
     const changeUsernameLink = document.getElementById('change-username-link');
-    const APP_VERSION = "1.6.1.c";
+    const APP_VERSION = "1.6.2";
 
     const GA_BACKEND_URL = "https://script.google.com/macros/s/AKfycbyrv_Z6Zmqsh6PhIKOnit6On_vPh_MeInZof_ZpgZ_AnIsIDidsh_ZIdsz_idsz/exec";
 
