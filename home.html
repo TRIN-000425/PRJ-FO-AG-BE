@@ -21,15 +21,20 @@
     </div>
 
     <header>
-        <div style="display: flex; align-items: center; gap: 10px;">
-            <span>Defect Dashboard</span>
-            <div id="sync-indicator" style="width: 8px; height: 8px; border-radius: 50%; background: #ccc;" title="Sync Status"></div>
+        <div class="header-row-1">
+            <span class="page-title">Dashboard</span>
+            <div id="connection-status" class="status-container status-online" title="Connection Status">
+                <span id="status-icon">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"></path><path d="M1.42 9a16 16 0 0 1 21.16 0"></path><path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path><line x1="12" y1="20" x2="12.01" y2="20"></line></svg>
+                </span>
+                <span id="status-text">Online</span>
+            </div>
         </div>
-        <div style="display: flex; gap: 12px;">
-            <button id="admin-btn" class="primary" style="width: auto; padding: 8px 15px; font-size: 0.8rem; display: none;">Project Setup</button>
-            <button id="new-report-btn" class="success" style="width: auto; padding: 8px 15px; font-size: 0.8rem;">New Report</button>
-            <button id="sync-btn" class="primary" style="width: auto; padding: 8px 15px; font-size: 0.8rem;" title="Sync data to GA and check for app updates">Sync All (GA & App)</button>
-            <button id="logout-btn" class="danger" style="width: auto; padding: 8px 15px; font-size: 0.8rem;">Logout</button>
+        <div class="header-row-2">
+            <button id="new-report-btn" class="success" style="width: auto; padding: 8px 15px; font-size: 0.75rem;">New Report</button>
+            <button id="sync-btn" class="primary" style="width: auto; padding: 8px 15px; font-size: 0.75rem;" title="Sync data to GA and check for app updates">Sync All</button>
+            <button id="admin-btn" class="primary" style="width: auto; padding: 8px 15px; font-size: 0.75rem; display: none;">Setup</button>
+            <button id="logout-btn" class="danger" style="width: auto; padding: 8px 15px; font-size: 0.75rem;">Logout</button>
         </div>
     </header>
 

@@ -68,23 +68,71 @@ body.login-page {
 
 /* Header & Navigation */
 header {
-    padding: 15px 25px;
-    background: rgba(240, 243, 246, 0.8);
+    padding: 10px 20px;
+    background: rgba(240, 243, 246, 0.95);
     backdrop-filter: blur(10px);
     border-bottom: 1px solid var(--shadow-dark);
     display: flex;
-    justify-content: space-between;
-    align-items: center;
+    flex-direction: column;
+    gap: 10px;
     position: sticky;
     top: 0;
-    z-index: 100;
+    z-index: 1000;
 }
 
-header span {
-    font-weight: 700;
-    letter-spacing: 1px;
+.header-row-1 {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+}
+
+.header-row-2 {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    overflow-x: auto;
+    padding-bottom: 5px;
+    scrollbar-width: none;
+}
+
+.header-row-2::-webkit-scrollbar {
+    display: none;
+}
+
+header span.page-title {
+    font-weight: 800;
+    font-size: 1.1rem;
+    letter-spacing: 1.5px;
     color: var(--accent-color);
     text-transform: uppercase;
+}
+
+.status-container {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.status-online {
+    background: rgba(26, 127, 55, 0.1);
+    color: #1a7f37;
+}
+
+.status-offline {
+    background: rgba(207, 34, 46, 0.1);
+    color: #cf222e;
+}
+
+.status-syncing {
+    background: rgba(24, 119, 242, 0.1);
+    color: #1877f2;
 }
 
 /* Typography */

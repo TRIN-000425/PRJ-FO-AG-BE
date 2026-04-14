@@ -3,7 +3,7 @@ let currentUpdatingDefect = null;
 let updatedDonePhotoBase64 = null;
 let isSyncing = false;
 let currentView = 'grid';
-const APP_VERSION = "1.6.8";
+const APP_VERSION = "1.7.0";
 
 window.allRenderedDefects = {};
 
@@ -293,9 +293,31 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function updateSyncUI(status) {
-        if (!syncIndicator) return;
-        const colors = { syncing: '#1877f2', online: '#1a7f37', offline: '#cf222e' };
-        syncIndicator.style.background = colors[status] || '#ccc';
+        const container = document.getElementById('connection-status');
+        const iconEl = document.getElementById('status-icon');
+        const textEl = document.getElementById('status-text');
+        if (!container || !iconEl || !textEl) return;
+
+        const onlineIcon = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"></path><path d="M1.42 9a16 16 0 0 1 21.16 0"></path><path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path><line x1="12" y1="20" x2="12.01" y2="20"></line></svg>`;
+        const offlineIcon = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="1" y1="1" x2="23" y2="23"></line><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"></path><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"></path><path d="M10.71 5.05A16 16 0 0 1 22.58 9"></path><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"></path><path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path><line x1="12" y1="20" x2="12.01" y2="20"></line></svg>`;
+
+        container.className = 'status-container';
+        if (status === 'syncing') {
+            container.classList.add('status-syncing');
+            textEl.textContent = 'Syncing...';
+            iconEl.innerHTML = onlineIcon;
+            container.style.animation = 'pulse 1.5s infinite';
+        } else if (status === 'online') {
+            container.classList.add('status-online');
+            textEl.textContent = 'Online';
+            iconEl.innerHTML = onlineIcon;
+            container.style.animation = 'none';
+        } else {
+            container.classList.add('status-offline');
+            textEl.textContent = 'Offline';
+            iconEl.innerHTML = offlineIcon;
+            container.style.animation = 'none';
+        }
     }
 
     searchInput.oninput = applyFilters;
