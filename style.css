@@ -88,7 +88,7 @@ header {
 }
 
 .header-row-2 {
-    display: flex;
+    display: none; /* Toggleable */
     justify-content: flex-start;
     align-items: center;
     gap: 8px;
@@ -98,8 +98,38 @@ header {
     scrollbar-width: none;
 }
 
+.header-row-2.active {
+    display: flex;
+}
+
 .header-row-2::-webkit-scrollbar {
     display: none;
+}
+
+.version-badge {
+    font-size: 0.65rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: rgba(0,0,0,0.05);
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.version-outdated {
+    background: var(--warning-color);
+    color: white;
+}
+
+.menu-toggle {
+    width: auto;
+    padding: 8px;
+    background: none;
+    box-shadow: none;
+    border: 1px solid var(--shadow-dark);
+}
+
+.menu-toggle:hover {
+    box-shadow: 2px 2px 5px var(--shadow-dark);
 }
 
 header span.page-title {

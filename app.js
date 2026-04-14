@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const passwordGroup = document.getElementById('password-group');
     const otpInput = document.getElementById('otp');
     const changeUsernameLink = document.getElementById('change-username-link');
-    const APP_VERSION = "1.7.0";
+    const APP_VERSION = "1.7.1";
 
     // GA_BACKEND_URL is defined in config.js
 
