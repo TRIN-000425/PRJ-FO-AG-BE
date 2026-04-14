@@ -30,6 +30,24 @@ function fixMapUrl(url) {
     return trimmed;
 }
 
+// --- PIN HIGHLIGHT HELPERS ---
+window.highlightPin = (id, active) => {
+    const pin = document.getElementById(`pin-${id}`);
+    if (pin) {
+        if (active) {
+            pin.style.width = '30px';
+            pin.style.height = '30px';
+            pin.style.zIndex = '1000';
+            pin.style.boxShadow = '0 0 20px rgba(26, 115, 232, 0.8)';
+        } else {
+            pin.style.width = '16px';
+            pin.style.height = '16px';
+            pin.style.zIndex = '10';
+            pin.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)';
+        }
+    }
+};
+
 // --- PDF EXPORT ---
 window.exportUnitPDF = async (unitNumber) => {
     const { jsPDF } = window.jspdf;
@@ -71,7 +89,7 @@ async function getBase64FromUrl(url) {
 // --- VERSION CHECKER ---
 async function checkAppVersion() {
     const localTag = document.getElementById('local-version-tag');
-    const version = (typeof APP_VERSION !== 'undefined') ? APP_VERSION : (window.APP_VERSION || "1.8.0");
+    const version = (typeof APP_VERSION !== 'undefined') ? APP_VERSION : (window.APP_VERSION || "1.8.1");
     if (localTag) localTag.textContent = 'v' + version;
     if (!navigator.onLine) return;
     try {
@@ -87,23 +105,38 @@ async function checkAppVersion() {
 // --- GLOBAL MODAL ACCESS ---
 window.showDefectDetailById = (id) => {
     const defect = window.allRenderedDefects[id];
-    if (!defect) return;
+    if (!defect) {
+        console.error("Defect not found for ID:", id);
+        return;
+    }
+    console.log("Opening detail for:", id);
     currentUpdatingDefect = JSON.parse(JSON.stringify(defect));
     updatedDonePhotoBase64 = null;
     
-    document.getElementById('detail-status-text').textContent = defect.status || 'Open';
-    document.getElementById('detail-status-text').className = `badge ${defect.status || 'Open'}`;
-    document.getElementById('detail-desc').textContent = defect.description;
+    const statusText = document.getElementById('detail-status-text');
+    if (statusText) {
+        statusText.textContent = defect.status || 'Open';
+        statusText.className = `badge ${defect.status || 'Open'}`;
+    }
+    
+    const descText = document.getElementById('detail-desc');
+    if (descText) descText.textContent = defect.description;
     
     const img = document.getElementById('detail-img');
-    const photoUrl = defect.photo || (defect.photoUrl ? fixMapUrl(defect.photoUrl) : 'assets/floorplan-placeholder.png');
-    img.src = photoUrl;
+    if (img) {
+        const photoUrl = defect.photo || (defect.photoUrl ? fixMapUrl(defect.photoUrl) : 'assets/floorplan-placeholder.png');
+        img.src = photoUrl;
+    }
     
-    document.getElementById('update-status-select').value = defect.status || 'Open';
-    document.getElementById('done-photo-group').style.display = (defect.status === 'Done') ? 'block' : 'none';
+    const updateSelect = document.getElementById('update-status-select');
+    if (updateSelect) updateSelect.value = defect.status || 'Open';
+    
+    const doneGroup = document.getElementById('done-photo-group');
+    if (doneGroup) doneGroup.style.display = (defect.status === 'Done') ? 'block' : 'none';
     
     renderTimeline(defect, document.getElementById('defect-timeline'));
-    document.getElementById('detail-modal').style.display = 'flex';
+    const modal = document.getElementById('detail-modal');
+    if (modal) modal.style.display = 'flex';
 };
 
 function renderTimeline(defect, container) {
@@ -204,7 +237,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     await registration.update();
                 }
             }
-            window.location.reload(true); // Attempt a cache-busting reload
+            window.location.reload(true);
         };
     }
 
@@ -259,7 +292,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         localStorage.setItem('project_config', JSON.stringify(result.config));
                         projectConfig = result.config;
                         updateUnitDropdown(projectConfig.unitNumbers);
-                        loadAdminSelectors(); // Update the table if open
+                        loadAdminSelectors();
                         await renderDashboard();
                     }
                 }
@@ -358,7 +391,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             let html = '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 16px;">';
             html += filtered.map(d => {
                 const photo = d.photo || (d.photoUrl ? fixMapUrl(d.photoUrl) : 'assets/floorplan-placeholder.png');
-                return `<div class="card defect-card" onclick="window.showDefectDetailById('${d.id}')" style="padding:0; overflow:hidden;">
+                return `<div class="card defect-card" onclick="window.showDefectDetailById('${d.id}')" style="padding:0; overflow:hidden; cursor:pointer;">
                     <img src="${photo}" class="defect-card-img" style="height: 120px; width:100%; object-fit:cover;">
                     <div class="defect-card-content" style="padding:10px;">
                         <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:4px;">
@@ -395,7 +428,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                     if (m) mapUrl = fixMapUrl(m.mapUrl);
                 }
 
-                // Group defects by position (threshold 2%)
                 const clusters = [];
                 defects.forEach(d => {
                     const cluster = clusters.find(c => Math.abs(c.x - d.position.x) < 2 && Math.abs(c.y - d.position.y) < 2);
@@ -413,14 +445,19 @@ document.addEventListener('DOMContentLoaded', async () => {
                             const colors = { Open: '#f9ab00', Onprogress: '#1a73e8', Done: '#188038' };
                             const bgColor = count > 1 ? '#333' : (colors[mainDefect.status] || 'red');
                             
-                            return `<div onclick="window.handlePinClick('${encodeURIComponent(JSON.stringify(c.defects))}')" 
-                                style="position:absolute; left:${c.x}%; top:${c.y}%; width:20px; height:20px; background:${bgColor}; border:2px solid #fff; border-radius:50%; transform:translate(-50%,-50%); cursor:pointer; box-shadow:0 2px 4px rgba(0,0,0,0.3); display:flex; align-items:center; justify-content:center; color:white; font-size:10px; font-weight:bold; z-index:10;">
+                            return `<div id="pin-${mainDefect.id}" onclick="window.handlePinClick('${encodeURIComponent(JSON.stringify(c.defects))}')" 
+                                style="position:absolute; left:${c.x}%; top:${c.y}%; width:16px; height:16px; background:${bgColor}; border:2px solid #fff; border-radius:50%; transform:translate(-50%,-50%); cursor:pointer; box-shadow:0 2px 4px rgba(0,0,0,0.3); display:flex; align-items:center; justify-content:center; color:white; font-size:10px; font-weight:bold; z-index:10; transition: all 0.2s;">
                                 ${count > 1 ? count : ''}
                             </div>`;
                         }).join('')}
                     </div>
                     <div style="margin-top:12px;">
-                        ${defects.map(d => `<div onclick="window.showDefectDetailById('${d.id}')" style="font-size:0.875rem; padding:8px 0; border-top:1px solid #eee; display:flex; align-items:center; justify-content:space-between; cursor:pointer;">
+                        ${defects.map(d => `<div onclick="window.showDefectDetailById('${d.id}')" 
+                            onmouseenter="window.highlightPin('${d.id}', true)" 
+                            onmouseleave="window.highlightPin('${d.id}', false)" 
+                            style="font-size:0.875rem; padding:10px 8px; border-top:1px solid #eee; display:flex; align-items:center; justify-content:space-between; cursor:pointer; transition: background 0.2s;"
+                            onmouseover="this.style.background='#f0f7ff'"
+                            onmouseout="this.style.background='transparent'">
                             <span style="color:#333;">${d.description}</span>
                             <span class="badge ${d.status}" style="font-size:0.65rem; padding:2px 8px;">${d.status}</span>
                         </div>`).join('')}
@@ -476,7 +513,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             } catch (e) { return null; }
         }
 
-        // --- STARTUP ---
         await checkAppVersion();
         window.showLoader('Syncing...');
         if (navigator.onLine) {
@@ -493,7 +529,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 });
 
-// Update modal logic
 document.getElementById('close-detail-btn').onclick = () => document.getElementById('detail-modal').style.display = 'none';
 document.getElementById('update-status-select').onchange = (e) => {
     document.getElementById('done-photo-group').style.display = (e.target.value === 'Done') ? 'block' : 'none';
@@ -504,12 +539,13 @@ document.getElementById('save-update-btn').onclick = async () => {
     window.showLoader('Saving...');
     const updated = { ...currentUpdatingDefect, status: newStatus };
     if (!updated.history) updated.history = [];
-    const note = document.getElementById('new-comment-input').value.trim();
+    const noteEl = document.getElementById('new-comment-input');
+    const note = noteEl ? noteEl.value.trim() : '';
     if (note) updated.history.push({ time: new Date().toISOString(), msg: `Note: ${note}` });
     
     const db = await initDB();
     delete updated.isSynced;
     await db.put('pending_defects', updated);
     document.getElementById('detail-modal').style.display = 'none';
-    window.location.reload(); // Simple refresh to show changes
+    window.location.reload();
 };
