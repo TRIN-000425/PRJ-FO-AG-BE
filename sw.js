@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pwa-defect-v32';
+const CACHE_NAME = 'pwa-defect-v33';
 const STATIC_ASSETS = [
   './',
   './index.html',

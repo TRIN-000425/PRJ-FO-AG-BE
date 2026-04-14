@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const passwordGroup = document.getElementById('password-group');
     const otpInput = document.getElementById('otp');
     const changeUsernameLink = document.getElementById('change-username-link');
-    const APP_VERSION = "1.6.4";
+    const APP_VERSION = "1.6.5";
 
     // GA_BACKEND_URL is defined in config.js
 
@@ -62,7 +62,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const result = await res.json();
             hideLoader();
 
-            if (result.status === 'otp_required') {
+            if (result.status === 'requires_otp') {
                 currentUsername = username;
                 passwordGroup.style.display = 'none';
                 otpGroup.style.display = 'block';
@@ -90,12 +90,8 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     function showLoader(text) {
-        document.getElementById('global-loader').textContent = text; // Simpler for now
-        document.getElementById('global-loader').style.display = 'flex';
-    }
-    // Correcting showLoader to use the existing structure
-    function showLoader(text) {
-        document.getElementById('loader-text').textContent = text;
+        const loaderText = document.getElementById('loader-text');
+        if (loaderText) loaderText.textContent = text;
         document.getElementById('global-loader').style.display = 'flex';
     }
 

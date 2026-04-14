@@ -3,7 +3,7 @@ let currentUpdatingDefect = null;
 let updatedDonePhotoBase64 = null;
 let isSyncing = false;
 let currentView = 'grid';
-const APP_VERSION = "1.6.4";
+const APP_VERSION = "1.6.5";
 
 window.allRenderedDefects = {};
 
