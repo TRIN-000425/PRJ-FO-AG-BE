@@ -2,175 +2,145 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Defect Tracker - Dashboard</title>
     <link rel="stylesheet" href="style.css">
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#f0f3f6">
-    <link rel="apple-touch-icon" href="assets/icon.svg">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
-    <!-- Top Warning Banners -->
-    <div id="update-banner" class="neu-raised" style="display: none; background: var(--accent-color); color: white; padding: 10px; text-align: center; font-size: 0.85rem; font-weight: 600; position: sticky; top: 0; z-index: 11000; border-radius: 0 0 15px 15px;">
-        A new version is available! <button onclick="window.location.reload()" style="width: auto; padding: 4px 12px; margin-left: 10px; background: white; color: var(--accent-color); border: none; border-radius: 5px; cursor: pointer;">Refresh Now</button>
-    </div>
-    
-    <div id="unsynced-banner" class="neu-raised" style="display: none; background: #cf222e; color: white; padding: 10px; text-align: center; font-size: 0.85rem; font-weight: 600; position: sticky; top: 0; z-index: 10900; border-radius: 0 0 15px 15px;">
-        Warning: You have <span id="unsynced-count">0</span> unsynced reports. <button id="banner-sync-btn" style="width: auto; padding: 4px 12px; margin-left: 10px; background: white; color: #cf222e; border: none; border-radius: 5px; cursor: pointer;">Sync All</button>
-    </div>
-
-    <header>
-        <div class="header-row-1">
-            <div style="display: flex; align-items: center; gap: 10px;">
-                <button id="menu-toggle-btn" class="menu-toggle neu-raised" title="Toggle Menu">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
-                </button>
-                <span class="page-title">Dashboard</span>
+    <div class="app-container">
+        <!-- Top App Bar -->
+        <header class="top-app-bar">
+            <h1 class="title">Dashboard</h1>
+            <div id="connection-status" class="status-pill" title="Connection Status">
+                <span id="local-version-tag" style="opacity: 0.7;"></span>
+                <span id="status-icon">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"></path><path d="M1.42 9a16 16 0 0 1 21.16 0"></path><path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path><line x1="12" y1="20" x2="12.01" y2="20"></line></svg>
+                </span>
+                <span id="status-text">Online</span>
             </div>
-            
-            <div style="display: flex; align-items: center; gap: 5px;">
-                <a href="#" onclick="localStorage.clear(); window.location.reload();" style="font-size: 0.6rem; color: var(--error-color); text-decoration: none; font-weight: 600; margin-right: 5px;">Emergency Logout</a>
-                <div id="connection-status" class="status-container status-online" title="Connection Status">
-                    <span id="local-version-tag" style="font-size: 0.6rem; opacity: 0.8; margin-right: 4px; font-weight: 800;"></span>
-                    <span id="status-icon">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"></path><path d="M1.42 9a16 16 0 0 1 21.16 0"></path><path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path><line x1="12" y1="20" x2="12.01" y2="20"></line></svg>
-                    </span>
-                    <span id="status-text" style="font-size: 0.65rem;">Online</span>
-                    <span id="online-version-tag" class="version-badge" style="display: none; margin-left: 5px; background: var(--warning-color); color: white;"></span>
+        </header>
+
+        <!-- Update Banner -->
+        <div id="update-banner" class="card" style="display: none; background-color: var(--primary-color); color: white; margin: 16px; border-radius: 8px; flex-direction: row; align-items: center; gap: 12px;">
+            <div style="flex-grow: 1; font-size: 0.875rem;">New version available!</div>
+            <button onclick="window.location.reload()" class="outline" style="color: white; border-color: white; padding: 6px 12px; font-size: 0.75rem;">Refresh</button>
+        </div>
+
+        <!-- Main Dashboard Content -->
+        <main class="main-content">
+            <!-- Search & Filter Pills -->
+            <div class="card" style="padding: 12px;">
+                <div class="input-group" style="margin-bottom: 12px;">
+                    <input type="text" id="search-input" placeholder="Search Unit or Description...">
+                </div>
+                <div class="filter-pills" id="status-filter-pills">
+                    <div class="pill active" data-status="all">All</div>
+                    <div class="pill" data-status="Open">Open</div>
+                    <div class="pill" data-status="Onprogress">In Progress</div>
+                    <div class="pill" data-status="Done">Done</div>
                 </div>
             </div>
-        </div>
-        <div id="nav-row" class="header-row-2">
-            <div class="radio-input">
-                <label id="new-report-label">
-                    <input type="radio" name="nav" id="new-report-radio">
-                    New Report
-                </label>
-                <label id="sync-label">
-                    <input type="radio" name="nav" id="sync-radio">
-                    Sync All
-                </label>
-                <label id="admin-label" style="display: none;">
-                    <input type="radio" name="nav" id="admin-radio">
-                    Setup
-                </label>
-                <label id="logout-label">
-                    <input type="radio" name="nav" id="logout-radio">
-                    Logout
-                </label>
-            </div>
-        </div>
-    </header>
 
-    <div class="main-content">
-        <div style="margin-bottom: 30px;">
-            <h2>Defect Monitoring</h2>
-            <p>Track and manage all defects. Use Map & Table view for site coordination.</p>
-        </div>
+            <!-- View Toggle -->
+            <div style="display: flex; gap: 12px; margin-bottom: 16px;">
+                <button id="view-grid-btn" class="primary" style="flex: 1; height: 40px; padding: 0;">Grid View</button>
+                <button id="view-list-btn" class="outline" style="flex: 1; height: 40px; padding: 0;">List View</button>
+            </div>
 
-        <!-- Search & Filter Bar -->
-        <div class="neu-raised" style="padding: 15px; border-radius: 15px; margin-bottom: 30px; display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end;">
-            <div class="input-group" style="margin: 0; flex: 2; min-width: 200px;">
-                <label>Search Unit or Description</label>
-                <input type="text" id="search-input" placeholder="Type to filter..." style="margin: 0;">
+            <!-- Unsynced Banner -->
+            <div id="unsynced-banner" class="card" style="display: none; background-color: #fce8e6; border: 1px solid #f5c2c7; color: #c5221f;">
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                    <span style="font-size: 0.875rem; font-weight: 500;"><span id="unsynced-count">0</span> reports waiting to sync</span>
+                    <button id="banner-sync-btn" class="primary" style="padding: 6px 12px; font-size: 0.75rem;">Sync Now</button>
+                </div>
             </div>
-            <div class="input-group" style="margin: 0; flex: 1; min-width: 150px;">
-                <label>Status Filter</label>
-                <select id="filter-status" style="margin: 0;">
-                    <option value="all">All Status</option>
-                    <option value="Open">Open</option>
-                    <option value="Onprogress">Onprogress</option>
-                    <option value="Done">Done</option>
-                </select>
-            </div>
-            <div style="display: flex; gap: 5px;">
-                <button id="view-grid-btn" class="primary" style="width: auto; height: 45px; padding: 0 15px; margin: 0; font-size: 0.7rem;">Grid</button>
-                <button id="view-list-btn" class="primary" style="width: auto; height: 45px; padding: 0 15px; margin: 0; font-size: 0.7rem;">Map & Table</button>
-            </div>
-            <button id="reset-filter-btn" class="danger" style="width: auto; height: 45px; padding: 0 20px; margin: 0; font-size: 0.7rem;">Reset</button>
-        </div>
 
-        <div id="dashboard-content">
-            <div style="text-align: center; padding: 50px;"><p>Loading dashboard data...</p></div>
-        </div>
+            <!-- Dashboard Content Area -->
+            <div id="dashboard-content">
+                <div style="text-align: center; padding: 48px;">
+                    <div class="spinner" style="margin: 0 auto 16px;"></div>
+                    <p style="color: var(--text-secondary);">Loading dashboard data...</p>
+                </div>
+            </div>
+        </main>
+
+        <!-- Bottom Navigation -->
+        <nav class="bottom-nav">
+            <a href="#" class="nav-item active" id="nav-home">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+                <span>Home</span>
+            </a>
+            <a href="#" class="nav-item" id="new-report-label">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+                <span>New</span>
+            </a>
+            <a href="#" class="nav-item" id="sync-label">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 4V1L8 5l4 3V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>
+                <span>Sync</span>
+            </a>
+            <a href="#" class="nav-item" id="logout-label">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 3h-2v10h2V3zm4.83 2.17l-1.42 1.42C17.99 7.86 19 9.81 19 12c0 3.87-3.13 7-7 7s-7-3.13-7-7c0-2.19 1.01-4.14 2.58-5.42L6.17 5.17C4.23 6.82 3 9.26 3 12c0 4.97 4.03 9 9 9s9-4.03 9-9c0-2.74-1.23-5.18-3.17-6.83z"/></svg>
+                <span>Logout</span>
+            </a>
+        </nav>
     </div>
 
-    <!-- Defect Detail Modal -->
-    <div id="detail-modal" class="defect-modal">
-        <div class="modal-content neu-raised" style="padding: 30px; max-width: 600px; width: 95%; max-height: 90vh; overflow-y: auto;">
-            <h3>Defect Lifecycle</h3>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px 0;">
-                <div>
-                    <p><strong>Current Status:</strong> <span id="detail-status-text"></span></p>
-                    <div class="input-group" style="margin-top: 15px;">
-                        <label>Update Status</label>
-                        <select id="update-status-select"><option value="Open">Open</option><option value="Onprogress">Onprogress</option><option value="Done">Done</option></select>
+    <!-- Detail Modal -->
+    <div id="detail-modal" class="modal-overlay">
+        <div class="modal-full">
+            <header class="modal-header">
+                <button id="close-detail-btn" style="background: none; padding: 8px; min-width: auto; height: auto;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+                <h2 style="flex-grow: 1; margin-left: 12px; font-size: 1.125rem;">Defect Details</h2>
+                <span id="detail-status-text" class="badge">Open</span>
+            </header>
+            <div class="modal-body">
+                <div class="card" style="padding: 0; overflow: hidden;">
+                    <img id="detail-img" class="defect-card-img" style="height: 240px;" src="assets/floorplan-placeholder.png">
+                    <div style="padding: 16px;">
+                        <h3 id="detail-desc" style="margin-bottom: 12px;">Defect Description</h3>
+                        <div id="defect-timeline" style="max-height: 200px; overflow-y: auto; background: var(--bg-color); border-radius: 8px; padding: 12px; font-size: 0.875rem;"></div>
                     </div>
                 </div>
-                <div id="done-photo-group" class="input-group" style="display: none;">
-                    <label>Completion Photo</label>
-                    <input type="file" id="done-photo-input" accept="image/*" capture="environment">
-                    <p id="done-compressing-msg" style="display: none; color: var(--accent-color); font-size: 0.8rem; margin-top: 5px;">Compressing...</p>
+
+                <div class="card">
+                    <h4 style="margin-bottom: 16px;">Update Status</h4>
+                    <div class="input-group">
+                        <select id="update-status-select">
+                            <option value="Open">Open</option>
+                            <option value="Onprogress">In Progress</option>
+                            <option value="Done">Done</option>
+                        </select>
+                    </div>
+                    <div id="done-photo-group" class="input-group" style="display: none;">
+                        <label>Completion Photo Required</label>
+                        <input type="file" id="done-photo-input" accept="image/*" capture="environment">
+                    </div>
+                    <div class="input-group">
+                        <textarea id="new-comment-input" rows="2" placeholder="Add a note..."></textarea>
+                    </div>
+                    <button id="save-update-btn" class="primary" style="width: 100%;">Save Changes</button>
                 </div>
-            </div>
-            <p><strong>Description:</strong> <span id="detail-desc"></span></p>
-            <div id="detail-photo-container" style="margin: 15px 0;">
-                <img id="detail-img" style="max-width: 100%; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.4);" alt="Defect Photo">
-            </div>
-            <div class="neu-inset" style="padding: 15px; border-radius: 12px; margin-top: 20px;">
-                <h4 style="margin-bottom: 10px;">Activity Timeline</h4>
-                <div id="defect-timeline" style="max-height: 200px; overflow-y: auto; font-size: 0.85rem; margin-bottom: 15px; display: flex; flex-direction: column; gap: 8px;"></div>
-                <div style="display: flex; gap: 10px;">
-                    <input type="text" id="new-comment-input" placeholder="Add a note..." style="margin: 0; font-size: 0.85rem;">
-                    <button id="add-comment-btn" class="primary" style="width: auto; padding: 0 15px; margin: 0; font-size: 0.8rem;">Post</button>
-                </div>
-            </div>
-            <div style="display: flex; gap: 15px; margin-top: 25px;">
-                <button id="save-update-btn" class="success">Save Changes</button>
-                <button id="close-detail-btn" class="danger">Cancel</button>
             </div>
         </div>
     </div>
 
-    <!-- HIGH-END BRANDED LOADER -->
+    <!-- Hidden radios for logic compatibility -->
+    <div style="display: none;">
+        <input type="radio" id="new-report-radio">
+        <input type="radio" id="sync-radio">
+        <input type="radio" id="logout-radio">
+        <input type="radio" id="admin-radio">
+        <div id="admin-label"></div>
+    </div>
+
     <div id="global-loader">
-        <div class="spinner-container">
-            <div class="spinner-logo"></div>
-            <div class="slider-container">
-                <div class="slider-bar"></div>
-                <div class="slider-bar"></div>
-                <div class="slider-bar"></div>
-                <div class="slider-bar"></div>
-                <div class="slider-bar"></div>
-                <div class="slider-bar"></div>
-                <div class="slider-bar"></div>
-                <div class="slider-bar"></div>
-                <div class="slider-bar"></div>
-                <div class="slider-bar"></div>
-            </div>
-        </div>
-        <p id="loader-text">Initializing Dashboard...</p>
+        <div class="spinner"></div>
+        <p id="loader-text" style="margin-top: 16px; font-weight: 500;">Syncing with Cloud...</p>
     </div>
 
     <script src="libs/idb.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="config.js?v=1.7.4"></script>
     <script src="home-logic.js?v=1.7.4"></script>
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js').then(reg => {
-                    reg.onupdatefound = () => {
-                        const installingWorker = reg.installing;
-                        installingWorker.onstatechange = () => {
-                            if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                                document.getElementById('update-banner').style.display = 'block';
-                            }
-                        };
-                    };
-                });
-            });
-        }
-    </script>
 </body>
 </html>

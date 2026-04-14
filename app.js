@@ -1,15 +1,12 @@
 document.addEventListener('DOMContentLoaded', () => {
     try {
-        const loginContainer = document.getElementById('login-container');
         const loginForm = document.getElementById('login-form');
-        const loginBtn = document.getElementById('login-btn');
         const messageDiv = document.getElementById('message');
         const otpGroup = document.getElementById('otp-group');
         const passwordGroup = document.getElementById('password-group');
         const otpInput = document.getElementById('otp');
         const changeUsernameLink = document.getElementById('change-username-link');
 
-        // GA_BACKEND_URL and APP_VERSION are defined in config.js
         const version = (typeof APP_VERSION !== 'undefined') ? APP_VERSION : (window.APP_VERSION || "1.7.4");
 
         function getDeviceId() {
@@ -22,11 +19,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         async function checkAppVersion() {
-            const version = (typeof APP_VERSION !== 'undefined') ? APP_VERSION : (window.APP_VERSION || "1.7.4");
-            // App logic doesn't have a local-version-tag element usually, but let's be safe
-            const localTag = document.getElementById('local-version-tag');
-            if (localTag) localTag.textContent = 'v' + version;
-
             if (!navigator.onLine) return;
             try {
                 const res = await fetch('version.json?t=' + Date.now());
@@ -41,7 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const session = JSON.parse(localStorage.getItem('user_session'));
         if (session) { 
-            showLoader('Welcome back! Redirecting...');
+            window.showLoader('Welcome back...');
             setTimeout(() => { window.location.href = 'home.html'; }, 500);
             return; 
         }
@@ -56,7 +48,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const isOtpStep = otpGroup.style.display === 'block';
             const action = isOtpStep ? 'verify_otp' : 'login';
             
-            showLoader(isOtpStep ? 'Verifying Code...' : 'Authenticating...');
+            window.showLoader(isOtpStep ? 'Verifying Code...' : 'Authenticating...');
             
             try {
                 const payload = { action, username, password, otp, deviceId };
@@ -68,15 +60,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
 
                 const result = await res.json();
-                hideLoader();
+                window.hideLoader();
 
                 if (result.status === 'requires_otp') {
                     passwordGroup.style.display = 'none';
                     otpGroup.style.display = 'block';
                     document.getElementById('username').readOnly = true;
-                    showMessage(`Device not recognized. ID: ${deviceId}. Enter OTP.`, 'info');
+                    showMessage(`Device not recognized. Enter OTP.`, 'info');
                 } else if (result.status === 'success') {
-                    showLoader('Confirmed! Loading...');
+                    window.showLoader('Confirmed! Loading...');
                     localStorage.setItem('user_session', JSON.stringify(result.session || result.user));
                     if (result.user && result.deviceToken) {
                         localStorage.setItem('user_session', JSON.stringify({
@@ -87,11 +79,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                     setTimeout(() => { window.location.href = 'home.html'; }, 800);
                 } else {
-                    showMessage(result.message || 'Error', 'error');
+                    showMessage(result.message || 'Login failed', 'error');
                 }
             } catch (err) {
-                hideLoader();
-                showMessage('Connection error.', 'error');
+                window.hideLoader();
+                showMessage('Connection error. Please try again.', 'error');
             }
         });
 
@@ -104,22 +96,23 @@ document.addEventListener('DOMContentLoaded', () => {
             messageDiv.style.display = 'none';
         };
 
-        function showLoader(text) {
+        window.showLoader = (text) => {
             const loaderText = document.getElementById('loader-text');
             if (loaderText) loaderText.textContent = text || 'Loading...';
             const loader = document.getElementById('global-loader');
             if (loader) loader.style.display = 'flex';
         }
-        function hideLoader() { 
+        window.hideLoader = () => { 
             const loader = document.getElementById('global-loader');
             if (loader) loader.style.display = 'none'; 
         }
         function showMessage(text, type) {
             messageDiv.textContent = text;
-            messageDiv.className = 'message ' + type;
             messageDiv.style.display = 'block';
+            messageDiv.style.backgroundColor = type === 'error' ? '#fce8e6' : '#e8f0fe';
+            messageDiv.style.color = type === 'error' ? '#c5221f' : '#1967d2';
         }
     } catch (err) {
-        console.error("Critical Login Page Initialization Failure:", err);
+        console.error("Login Error:", err);
     }
 });

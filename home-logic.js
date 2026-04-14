@@ -3,6 +3,7 @@ let currentUpdatingDefect = null;
 let updatedDonePhotoBase64 = null;
 let isSyncing = false;
 let currentView = 'grid';
+let currentStatusFilter = 'all';
 
 window.allRenderedDefects = {};
 
@@ -22,32 +23,25 @@ function fixMapUrl(url) {
     if (!url) return url;
     const trimmed = url.trim();
     if (trimmed.includes('drive.google.com') || trimmed.includes('googledrive.com')) {
-        const match = trimmed.match(/\/d\/([^/?]+)/) || trimmed.match(/id=([^&?]+)/);
-        if (match && match[1]) return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w1600`;
-        const idMatch = trimmed.split('id=')[1] || trimmed.split('/d/')[1];
-        if (idMatch) {
-            const cleanId = idMatch.split(/[&?]/)[0];
-            return `https://drive.google.com/thumbnail?id=${cleanId}&sz=w1600`;
-        }
+        const idMatch = trimmed.match(/\/d\/([^/?]+)/) || trimmed.match(/id=([^&?]+)/);
+        if (idMatch && idMatch[1]) return `https://drive.google.com/thumbnail?id=${idMatch[1]}&sz=w1600`;
     }
     return trimmed;
 }
 
-// --- PDF EXPORT WITH IMAGES ---
+// --- PDF EXPORT ---
 window.exportUnitPDF = async (unitNumber) => {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
     const defects = Object.values(window.allRenderedDefects).filter(d => d.unit === unitNumber);
-    window.showLoader(`Preparing PDF Report for ${unitNumber}...`);
-    doc.setFontSize(22); doc.setTextColor(24, 119, 242); doc.text(`Punch List: Unit ${unitNumber}`, 20, 20);
+    window.showLoader(`Preparing PDF...`);
+    doc.setFontSize(20); doc.setTextColor(26, 115, 232); doc.text(`Punch List: Unit ${unitNumber}`, 20, 20);
     doc.setFontSize(10); doc.setTextColor(100); doc.text(`Generated: ${new Date().toLocaleString()}`, 20, 28);
-    doc.line(20, 32, 190, 32);
     let y = 45;
-    for (let i = 0; i < defects.length; i++) {
-        const d = defects[i];
+    for (const d of defects) {
         if (y > 220) { doc.addPage(); y = 20; }
-        doc.setFontSize(14); doc.setTextColor(0); doc.text(`${i + 1}. ${d.description || 'No Description'}`, 20, y);
-        y += 7; doc.setFontSize(10); doc.setTextColor(100); doc.text(`Status: ${d.status} | Floor: ${d.story} | Date: ${new Date(d.timestamp).toLocaleDateString()}`, 20, y);
+        doc.setFontSize(14); doc.setTextColor(0); doc.text(`${d.description || 'No Description'}`, 20, y);
+        y += 7; doc.setFontSize(10); doc.setTextColor(100); doc.text(`Status: ${d.status} | Floor: ${d.story}`, 20, y);
         const photoUrl = d.donePhotoUrl ? fixMapUrl(d.donePhotoUrl) : (d.photo || (d.photoUrl ? fixMapUrl(d.photoUrl) : ''));
         if (photoUrl) {
             try {
@@ -56,10 +50,6 @@ window.exportUnitPDF = async (unitNumber) => {
                 y += 40;
             } catch (e) { y += 10; }
         } else { y += 10; }
-        if (d.history && d.history.length > 0) {
-            doc.setFontSize(9); doc.setTextColor(120); doc.text(`Latest Update: ${d.history[d.history.length-1].msg}`, 25, y);
-            y += 8;
-        }
         y += 5;
     }
     doc.save(`Report_${unitNumber}.pdf`);
@@ -70,38 +60,25 @@ async function getBase64FromUrl(url) {
     if (url.startsWith('data:')) return url;
     const response = await fetch(url);
     const blob = await response.blob();
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
         const reader = new FileReader();
         reader.onloadend = () => resolve(reader.result);
-        reader.onerror = reject;
         reader.readAsDataURL(blob);
     });
 }
 
 // --- VERSION CHECKER ---
 async function checkAppVersion() {
-    const onlineTag = document.getElementById('online-version-tag');
     const localTag = document.getElementById('local-version-tag');
     const version = (typeof APP_VERSION !== 'undefined') ? APP_VERSION : (window.APP_VERSION || "1.7.4");
     if (localTag) localTag.textContent = 'v' + version;
-
     if (!navigator.onLine) return;
-
     try {
         const res = await fetch('version.json?t=' + Date.now());
         const data = await res.json();
-        if (data.version) {
-            if (data.version !== version) {
-                if (onlineTag) {
-                    onlineTag.textContent = 'Latest: v' + data.version;
-                    onlineTag.style.display = 'inline-block';
-                    onlineTag.classList.add('version-outdated');
-                }
-                const banner = document.getElementById('update-banner');
-                if (banner) banner.style.display = 'block';
-            } else {
-                if (onlineTag) onlineTag.style.display = 'none';
-            }
+        if (data.version && data.version !== version) {
+            const banner = document.getElementById('update-banner');
+            if (banner) banner.style.display = 'flex';
         }
     } catch (e) {}
 }
@@ -112,37 +89,33 @@ window.showDefectDetailById = (id) => {
     if (!defect) return;
     currentUpdatingDefect = JSON.parse(JSON.stringify(defect));
     updatedDonePhotoBase64 = null;
+    
     document.getElementById('detail-status-text').textContent = defect.status || 'Open';
+    document.getElementById('detail-status-text').className = `badge ${defect.status || 'Open'}`;
     document.getElementById('detail-desc').textContent = defect.description;
-    const mainPhoto = defect.photo || (defect.photoUrl ? fixMapUrl(defect.photoUrl) : '');
+    
     const img = document.getElementById('detail-img');
-    img.src = mainPhoto;
-    img.style.display = mainPhoto ? 'block' : 'none';
+    const photoUrl = defect.photo || (defect.photoUrl ? fixMapUrl(defect.photoUrl) : 'assets/floorplan-placeholder.png');
+    img.src = photoUrl;
+    
     document.getElementById('update-status-select').value = defect.status || 'Open';
-    document.getElementById('done-photo-group').style.display = (document.getElementById('update-status-select').value === 'Done') ? 'block' : 'none';
+    document.getElementById('done-photo-group').style.display = (defect.status === 'Done') ? 'block' : 'none';
+    
     renderTimeline(defect, document.getElementById('defect-timeline'));
-    document.getElementById('detail-modal').style.display = 'block';
-};
-
-// --- PIN HIGHLIGHT HELPERS ---
-window.highlightPin = (id, active) => {
-    const pin = document.getElementById(`pin-${id}`);
-    if (pin) {
-        if (active) pin.classList.add('pin-highlight');
-        else pin.classList.remove('pin-highlight');
-    }
+    document.getElementById('detail-modal').style.display = 'flex';
 };
 
 function renderTimeline(defect, container) {
     if (!container) return;
-    let html = `<div style="color: var(--text-muted); padding: 5px 0;"><span style="font-weight: 600;">Reported:</span> ${new Date(defect.timestamp).toLocaleString()}</div>`;
+    let html = `<div style="margin-bottom: 8px;"><strong>Reported:</strong> ${new Date(defect.timestamp).toLocaleString()}</div>`;
     if (defect.history && defect.history.length > 0) {
         defect.history.forEach(h => {
-            html += `<div style="border-left: 2px solid var(--accent-color); padding-left: 10px; margin: 5px 0;"><div style="font-size: 0.75rem; color: var(--text-muted);">${new Date(h.time).toLocaleString()}</div><div style="font-weight: 500;">${h.msg}</div></div>`;
+            html += `<div style="margin-top: 4px; padding-top: 4px; border-top: 1px solid #ddd;">
+                <span style="font-size: 0.75rem; color: #666;">${new Date(h.time).toLocaleString()}</span><br>${h.msg}
+            </div>`;
         });
     }
     container.innerHTML = html;
-    container.scrollTop = container.scrollHeight;
 }
 
 window.showLoader = (text) => {
@@ -159,115 +132,121 @@ window.hideLoader = () => {
 document.addEventListener('DOMContentLoaded', async () => {
     console.log("Dashboard initializing...");
 
-    const newReportLabel = document.getElementById('new-report-label');
-    const syncLabel = document.getElementById('sync-label');
-    const adminLabel = document.getElementById('admin-label');
-    const logoutLabel = document.getElementById('logout-label');
+    // --- NAV BINDING ---
+    document.getElementById('new-report-label').onclick = (e) => {
+        e.preventDefault();
+        window.showLoader('Opening Report View...');
+        setTimeout(() => { window.location.href = 'defect.html'; }, 200);
+    };
 
-    // --- IMMEDIATE NAV BINDING ---
-    if (newReportLabel) {
-        newReportLabel.onclick = () => {
-            const radio = document.getElementById('new-report-radio');
-            if (radio) radio.checked = true;
-            window.showLoader('Opening Report View...');
-            setTimeout(() => { window.location.href = 'defect.html'; }, 200);
-        };
-    }
-
-    if (logoutLabel) {
-        logoutLabel.onclick = () => {
-            const radio = document.getElementById('logout-radio');
-            if (radio) radio.checked = true;
-            window.showLoader('Signing out...');
+    document.getElementById('logout-label').onclick = (e) => {
+        e.preventDefault();
+        if (confirm('Sign out?')) {
             localStorage.clear(); 
-            setTimeout(() => { window.location.href = 'index.html'; }, 200);
-        };
-    }
+            window.location.href = 'index.html';
+        }
+    };
 
-    // Set local version immediately
-    const localTag = document.getElementById('local-version-tag');
-    const currentVer = (typeof APP_VERSION !== 'undefined') ? APP_VERSION : (window.APP_VERSION || "1.7.4");
-    if (localTag) localTag.textContent = 'v' + currentVer;
+    document.getElementById('sync-label').onclick = async (e) => {
+        e.preventDefault();
+        window.showLoader('Full Synchronization...');
+        await syncAllPending(false);
+        await refreshConfig(false);
+        window.hideLoader();
+    };
+
+    // --- FILTERS ---
+    const filterPills = document.querySelectorAll('#status-filter-pills .pill');
+    filterPills.forEach(pill => {
+        pill.onclick = () => {
+            filterPills.forEach(p => p.classList.remove('active'));
+            pill.classList.add('active');
+            currentStatusFilter = pill.dataset.status;
+            applyFilters();
+        };
+    });
+
+    const searchInput = document.getElementById('search-input');
+    if (searchInput) searchInput.oninput = applyFilters;
+
+    const viewGridBtn = document.getElementById('view-grid-btn');
+    const viewListBtn = document.getElementById('view-list-btn');
+    
+    if (viewGridBtn) viewGridBtn.onclick = () => {
+        currentView = 'grid';
+        viewGridBtn.className = 'primary';
+        viewListBtn.className = 'outline';
+        applyFilters();
+    };
+    if (viewListBtn) viewListBtn.onclick = () => {
+        currentView = 'list';
+        viewListBtn.className = 'primary';
+        viewGridBtn.className = 'outline';
+        applyFilters();
+    };
 
     try {
-        window.showLoader('Initializing Dashboard...');
-        
         const session = JSON.parse(localStorage.getItem('user_session'));
         if (!session) { window.location.href = 'index.html'; return; }
 
-        if (session.role === 'Admin' && adminLabel) adminLabel.style.display = 'flex';
-
         const db = await initDB();
         const dashboardContent = document.getElementById('dashboard-content');
-        const unsyncedBanner = document.getElementById('unsynced-banner');
-        const unsyncedCountEl = document.getElementById('unsynced-count');
-
-        const searchInput = document.getElementById('search-input');
-        const filterStatus = document.getElementById('filter-status');
-        const viewGridBtn = document.getElementById('view-grid-btn');
-        const viewListBtn = document.getElementById('view-list-btn');
-
-        if (syncLabel) {
-            syncLabel.onclick = async () => {
-                const radio = document.getElementById('sync-radio');
-                if (radio) radio.checked = true;
-                window.showLoader('Full Synchronization in Progress...');
-                await syncAllPending(false);
-                await refreshConfig(false);
-                await checkAppVersion();
-                if ('serviceWorker' in navigator) { const reg = await navigator.serviceWorker.getRegistration(); if (reg) await reg.update(); }
-                window.hideLoader();
-            };
-        }
-
-        if (adminLabel) {
-            adminLabel.onclick = () => {
-                const radio = document.getElementById('admin-radio');
-                if (radio) radio.checked = true;
-            };
-        }
-
         let masterDefectList = [];
         let projectConfig = { syncedDefects: [], unitNumbers: [], stories: [], unitTypes: [], maps: [] };
 
-        async function checkUnsynced() {
+        async function syncAllPending(silent = false) {
+            if (isSyncing || !navigator.onLine) return;
             const pending = await db.getAll('pending_defects');
-            if (pending.length > 0) {
-                if (unsyncedBanner) unsyncedBanner.style.display = 'block';
-                if (unsyncedCountEl) unsyncedCountEl.textContent = pending.length;
-            } else {
-                if (unsyncedBanner) unsyncedBanner.style.display = 'none';
+            if (pending.length === 0) return;
+            isSyncing = true;
+            for (const d of pending) {
+                try {
+                    const res = await authorizedPost('sync_defects', { defect: d });
+                    if (res && (await res.json()).status === 'success') await db.delete('pending_defects', d.id);
+                } catch (e) {}
             }
+            isSyncing = false;
+            await refreshConfig(silent);
         }
 
-        async function renderDashboard(useLoader = false) {
-            if (useLoader) window.showLoader('Updating View...');
+        async function refreshConfig(silent = true) {
+            if (!navigator.onLine) { await renderDashboard(false); return; }
             try {
-                const cached = localStorage.getItem('project_config');
-                if (cached) projectConfig = JSON.parse(cached);
-                const pending = await db.getAll('pending_defects');
-                masterDefectList = [
-                    ...projectConfig.syncedDefects.map(d => ({ ...d, isSynced: true, history: d.history || [] })),
-                    ...pending.map(d => ({ ...d, isSynced: false, history: d.history || [] }))
-                ];
-                window.allRenderedDefects = {};
-                masterDefectList.forEach(d => { window.allRenderedDefects[d.id] = d; });
-                applyFilters();
-                await checkUnsynced();
-            } catch (e) {
-                console.error("Dashboard render error:", e);
-                if (dashboardContent) dashboardContent.innerHTML = `<div class="neu-raised" style="padding:30px;color:red;text-align:center;">Error loading dashboard: ${e.message}</div>`;
-            } finally {
-                if (useLoader) window.hideLoader();
-            }
+                const res = await authorizedPost('get_config', {});
+                if (res) {
+                    const result = await res.json();
+                    if (result.status === 'success') {
+                        localStorage.setItem('project_config', JSON.stringify(result.config));
+                        projectConfig = result.config;
+                        await renderDashboard(false);
+                    }
+                }
+            } catch (e) { await renderDashboard(false); }
+        }
+
+        async function renderDashboard() {
+            const cached = localStorage.getItem('project_config');
+            if (cached) projectConfig = JSON.parse(cached);
+            const pending = await db.getAll('pending_defects');
+            masterDefectList = [
+                ...projectConfig.syncedDefects.map(d => ({ ...d, isSynced: true })),
+                ...pending.map(d => ({ ...d, isSynced: false }))
+            ];
+            window.allRenderedDefects = {};
+            masterDefectList.forEach(d => { window.allRenderedDefects[d.id] = d; });
+            applyFilters();
+            
+            const count = pending.length;
+            const banner = document.getElementById('unsynced-banner');
+            if (banner) banner.style.display = count > 0 ? 'block' : 'none';
+            if (document.getElementById('unsynced-count')) document.getElementById('unsynced-count').textContent = count;
         }
 
         function applyFilters() {
             const query = (searchInput.value || '').toLowerCase();
-            const status = filterStatus.value;
             const filtered = masterDefectList.filter(d => {
                 const matchSearch = (d.unit || '').toLowerCase().includes(query) || (d.description || '').toLowerCase().includes(query);
-                const matchStatus = (status === 'all') || (d.status === status);
+                const matchStatus = (currentStatusFilter === 'all') || (d.status === currentStatusFilter);
                 return matchSearch && matchStatus;
             });
             if (currentView === 'grid') renderGridView(filtered);
@@ -276,281 +255,37 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         function renderGridView(filtered) {
             if (!dashboardContent) return;
-            if (filtered.length === 0) { 
-                dashboardContent.innerHTML = '<div style="text-align:center;padding:50px;"><p class="neu-inset" style="padding:20px;display:inline-block;">No defects found matching your criteria.</p></div>'; 
-                return; 
-            }
-            const grouped = groupDefects(filtered);
-            let html = '';
-            for (const [unit, defects] of Object.entries(grouped)) {
-                html += `<div class="unit-section"><h3 class="unit-header">${unit}</h3><div class="defect-grid">`;
-                html += defects.map(d => {
-                    const photo = d.donePhotoUrl ? fixMapUrl(d.donePhotoUrl) : (d.photo || (d.photoUrl ? fixMapUrl(d.photoUrl) : 'assets/floorplan-placeholder.png'));
-                    return `
-                        <div class="defect-card neu-raised" onclick="window.showDefectDetailById('${d.id}')">
-                            <span class="badge ${d.status}">${d.status}</span>
-                            ${!d.isSynced ? '<span class="badge pending" style="top:auto;bottom:10px;">Unsynced</span>' : ''}
-                            <img src="${photo}" class="defect-card-img" onerror="this.src='assets/floorplan-placeholder.png'">
-                            <h4>${d.story}</h4><p class="desc">${d.description}</p>
-                        </div>`;
-                }).join('');
-                html += `</div></div>`;
-            }
+            if (filtered.length === 0) { dashboardContent.innerHTML = '<p style="text-align:center; padding:40px; color:#666;">No defects found.</p>'; return; }
+            
+            let html = '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 16px;">';
+            html += filtered.map(d => {
+                const photo = d.photo || (d.photoUrl ? fixMapUrl(d.photoUrl) : 'assets/floorplan-placeholder.png');
+                return `<div class="card defect-card" onclick="window.showDefectDetailById('${d.id}')">
+                    <img src="${photo}" class="defect-card-img" style="height: 120px;">
+                    <div class="defect-card-content">
+                        <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:4px;">
+                            <span style="font-weight:600; font-size:0.875rem;">${d.unit}</span>
+                            <span class="badge ${d.status}" style="font-size:0.65rem; padding:2px 6px;">${d.status}</span>
+                        </div>
+                        <p style="font-size:0.75rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${d.description}</p>
+                    </div>
+                </div>`;
+            }).join('');
+            html += '</div>';
             dashboardContent.innerHTML = html;
         }
 
         function renderListView(filtered) {
             if (!dashboardContent) return;
-            if (filtered.length === 0) { 
-                dashboardContent.innerHTML = '<div style="text-align:center;padding:50px;"><p class="neu-inset" style="padding:20px;display:inline-block;">No defects found matching your criteria.</p></div>'; 
-                return; 
-            }
-            const grouped = groupDefects(filtered);
-            let html = '';
-            for (const [unit, defects] of Object.entries(grouped)) {
-                html += `<div class="unit-section neu-raised" style="padding:20px;border-radius:20px;margin-bottom:30px;">
-                    <div style="display:flex;justify-content:space-between;margin-bottom:15px;align-items:center;"><h3>Unit: ${unit}</h3><button class="primary" onclick="window.exportUnitPDF('${unit}')" style="width:auto;padding:5px 15px;font-size:0.75rem;">PDF Report</button></div>`;
-                const storyGroups = defects.reduce((acc, d) => { if (!acc[d.story]) acc[d.story] = []; acc[d.story].push(d); return acc; }, {});
-                for (const [story, sDefects] of Object.entries(storyGroups)) {
-                    const mapMapping = projectConfig.unitNumbers.find(u => u.number === unit);
-                    const mapObj = projectConfig.maps.find(m => m.unit === (mapMapping?mapMapping.type:unit) && m.story === story);
-                    const mapUrl = mapObj ? fixMapUrl(mapObj.mapUrl) : 'assets/floorplan-placeholder.png';
-                    html += `<div style="margin-top:20px;"><h4>Floor: ${story}</h4>
-                        <div style="display:grid;grid-template-columns:1fr 1.5fr;gap:20px;">
-                            <div style="position:relative;border-radius:10px;overflow:hidden;background:#fff;" class="neu-inset">
-                                <img src="${mapUrl}" style="width:100%;display:block;" onerror="this.src='assets/floorplan-placeholder.png'">
-                                ${sDefects.map(d => `<div id="pin-${d.id}" class="pin" style="left:${d.position.x}%;top:${d.position.y}%;background:${d.status==='Done'?'#1a7f37':(d.status==='Onprogress'?'#1877f2':'#d29922')};width:12px;height:12px;border:2px solid #fff;position:absolute;border-radius:50%;transform:translate(-50%,-50%);cursor:pointer;" onclick="window.showDefectDetailById('${d.id}')"></div>`).join('')}
-                            </div>
-                            <div class="neu-inset" style="padding:10px;border-radius:10px;overflow-x:auto;">
-                                <table style="width:100%;font-size:0.8rem;border-collapse:collapse;">
-                                    <thead><tr style="text-align:left;border-bottom:1px solid #ccc;"><th style="padding:10px;">Status</th><th style="padding:10px;">Desc</th><th style="padding:10px;">Action</th></tr></thead>
-                                    <tbody>${sDefects.map(d => `
-                                        <tr style="border-bottom:1px solid #eee; transition: background 0.2s;" onmouseenter="window.highlightPin('${d.id}', true)" onmouseleave="window.highlightPin('${d.id}', false)">
-                                            <td style="padding:10px;"><span class="badge ${d.status}" style="position:static; padding:2px 8px; font-size:0.6rem;">${d.status}</span></td>
-                                            <td style="padding:10px;">${d.description}</td>
-                                            <td style="padding:10px;"><button class="primary" style="width:auto;padding:2px 8px;font-size:0.7rem;" onclick="window.showDefectDetailById('${d.id}')">Details</button></td>
-                                        </tr>`).join('')}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div></div>`;
-                }
-                html += `</div>`;
-            }
-            dashboardContent.innerHTML = html;
-        }
-
-        function groupDefects(list) {
-            return list.reduce((acc, d) => { const u = d.unit || 'Unknown'; if (!acc[u]) acc[u] = []; acc[u].push(d); return acc; }, {});
-        }
-
-        // --- SYNC & REFRESH ---
-        async function syncAllPending(silent = false) {
-            if (isSyncing || !navigator.onLine) { updateSyncUI(navigator.onLine ? 'online' : 'offline'); return; }
-            const pending = await db.getAll('pending_defects');
-            if (pending.length === 0) { updateSyncUI('online'); return; }
-            isSyncing = true; updateSyncUI('syncing');
-            for (let i = 0; i < pending.length; i++) {
-                if (!silent) window.showLoader(`Uploading staged report ${i + 1} of ${pending.length}...`);
-                try {
-                    const res = await authorizedPost('sync_defects', { defect: pending[i] });
-                    if (res && (await res.json()).status === 'success') await db.delete('pending_defects', pending[i].id);
-                } catch (e) {}
-            }
-            isSyncing = false;
-            await refreshConfig(silent);
-            updateSyncUI(navigator.onLine ? 'online' : 'offline');
-            await checkUnsynced();
-        }
-
-        async function refreshConfig(silent = true) {
-            if (!navigator.onLine) return;
-            if (!silent) window.showLoader('Syncing with Cloud...');
-            try {
-                const res = await authorizedPost('get_config', {});
-                if (res) {
-                    const result = await res.json();
-                    if (result.status === 'success') {
-                        localStorage.setItem('project_config', JSON.stringify(result.config));
-                        projectConfig = result.config;
-                        await loadAdminSelectors();
-                        await renderDashboard(false);
-                    }
-                }
-            } catch (e) {}
-            if (!silent) window.hideLoader();
-        }
-
-        function updateSyncUI(status) {
-            const container = document.getElementById('connection-status');
-            const iconEl = document.getElementById('status-icon');
-            const textEl = document.getElementById('status-text');
-            if (!container || !iconEl || !textEl) return;
-
-            const onlineIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"></path><path d="M1.42 9a16 16 0 0 1 21.16 0"></path><path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path><line x1="12" y1="20" x2="12.01" y2="20"></line></svg>`;
-            const offlineIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="1" y1="1" x2="23" y2="23"></line><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"></path><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"></path><path d="M10.71 5.05A16 16 0 0 1 22.58 9"></path><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"></path><path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path><line x1="12" y1="20" x2="12.01" y2="20"></line></svg>`;
-
-            container.className = 'status-container';
-            if (status === 'syncing') {
-                container.classList.add('status-syncing');
-                textEl.textContent = 'Syncing...';
-                iconEl.innerHTML = onlineIcon;
-                container.style.animation = 'pulse 1.5s infinite';
-            } else if (status === 'online') {
-                container.classList.add('status-online');
-                textEl.textContent = 'Online';
-                iconEl.innerHTML = onlineIcon;
-                container.style.animation = 'none';
-            } else {
-                container.classList.add('status-offline');
-                textEl.textContent = 'Offline';
-                iconEl.innerHTML = offlineIcon;
-                container.style.animation = 'none';
-            }
-        }
-
-        if (searchInput) searchInput.oninput = applyFilters;
-        if (filterStatus) filterStatus.onchange = applyFilters;
-
-        const resetButton = document.getElementById('reset-filter-btn');
-        if (resetButton) resetButton.onclick = () => { if(searchInput) searchInput.value = ''; if(filterStatus) filterStatus.value = 'all'; applyFilters(); };
-        
-        if (viewGridBtn) viewGridBtn.onclick = () => { currentView = 'grid'; viewGridBtn.classList.add('success'); if(viewListBtn) viewListBtn.classList.remove('success'); applyFilters(); };
-        if (viewListBtn) viewListBtn.onclick = () => { currentView = 'list'; viewListBtn.classList.add('success'); if(viewGridBtn) viewGridBtn.classList.remove('success'); applyFilters(); };
-        
-        const bannerSyncBtn = document.getElementById('banner-sync-btn');
-        if (bannerSyncBtn) {
-            bannerSyncBtn.onclick = async () => {
-                window.showLoader('Uploading staged data...');
-                await syncAllPending(false);
-                window.hideLoader();
-            };
-        }
-
-        const refreshAdminBtn = document.getElementById('refresh-admin-table-btn');
-        if (refreshAdminBtn) refreshAdminBtn.onclick = () => refreshConfig(false);
-        
-        const forcePurgeBtn = document.getElementById('force-purge-btn');
-        if (forcePurgeBtn) {
-            forcePurgeBtn.onclick = async () => {
-                if (confirm('Force purge local cache and re-download?')) {
-                    window.showLoader('Clearing Cache...');
-                    localStorage.removeItem('project_config');
-                    await refreshConfig(false);
-                }
-            };
-        }
-
-        window.addEventListener('online', () => { syncAllPending(true); refreshConfig(true); checkAppVersion(); });
-        setInterval(syncAllPending, 15000);
-        setInterval(checkAppVersion, 300000);
-
-        const addCommentBtn = document.getElementById('add-comment-btn');
-        if (addCommentBtn) {
-            addCommentBtn.onclick = async () => {
-                const commentInput = document.getElementById('new-comment-input');
-                const msg = commentInput ? commentInput.value.trim() : '';
-                if (!msg || !currentUpdatingDefect) return;
-                window.showLoader('Adding note...');
-                if (!currentUpdatingDefect.history) currentUpdatingDefect.history = [];
-                currentUpdatingDefect.history.push({ time: new Date().toISOString(), msg: `Note: ${msg}` });
-                if (commentInput) commentInput.value = '';
-                const updated = { ...currentUpdatingDefect };
-                delete updated.isSynced;
-                await db.put('pending_defects', updated);
-                renderTimeline(currentUpdatingDefect, document.getElementById('defect-timeline'));
-                syncAllPending(true);
-                setTimeout(window.hideLoader, 300);
-            };
-        }
-
-        const saveUpdateBtn = document.getElementById('save-update-btn');
-        if (saveUpdateBtn) {
-            saveUpdateBtn.onclick = async () => {
-                const statusSelect = document.getElementById('update-status-select');
-                const newStatus = statusSelect ? statusSelect.value : 'Open';
-                if (newStatus === 'Done' && !updatedDonePhotoBase64 && !currentUpdatingDefect.donePhotoUrl) return alert('Completion photo is required.');
-                window.showLoader('Updating Status...');
-                if (newStatus !== currentUpdatingDefect.status) {
-                    if (!currentUpdatingDefect.history) currentUpdatingDefect.history = [];
-                    currentUpdatingDefect.history.push({ time: new Date().toISOString(), msg: `Status: ${newStatus}` });
-                }
-                const updated = { ...currentUpdatingDefect, status: newStatus, donePhoto: updatedDonePhotoBase64 || currentUpdatingDefect.donePhoto };
-                delete updated.isSynced;
-                await db.put('pending_defects', updated);
-                const modal = document.getElementById('detail-modal');
-                if (modal) modal.style.display = 'none';
-                await renderDashboard(false);
-                syncAllPending(true);
-                setTimeout(window.hideLoader, 500);
-            };
-        }
-
-        const updateStatusSelect = document.getElementById('update-status-select');
-        if (updateStatusSelect) {
-            updateStatusSelect.onchange = () => {
-                const donePhotoGroup = document.getElementById('done-photo-group');
-                if (donePhotoGroup) donePhotoGroup.style.display = (updateStatusSelect.value === 'Done') ? 'block' : 'none';
-            };
-        }
-
-        const closeDetailBtn = document.getElementById('close-detail-btn');
-        if (closeDetailBtn) closeDetailBtn.onclick = () => {
-            const modal = document.getElementById('detail-modal');
-            if (modal) modal.style.display = 'none';
-        };
-            if (newStatus === 'Done' && !updatedDonePhotoBase64 && !currentUpdatingDefect.donePhotoUrl) return alert('Completion photo is required.');
-            window.showLoader('Updating Status...');
-            if (newStatus !== currentUpdatingDefect.status) {
-                if (!currentUpdatingDefect.history) currentUpdatingDefect.history = [];
-                currentUpdatingDefect.history.push({ time: new Date().toISOString(), msg: `Status: ${newStatus}` });
-            }
-            const updated = { ...currentUpdatingDefect, status: newStatus, donePhoto: updatedDonePhotoBase64 || currentUpdatingDefect.donePhoto };
-            delete updated.isSynced;
-            await db.put('pending_defects', updated);
-            document.getElementById('detail-modal').style.display = 'none';
-            await renderDashboard(false);
-            syncAllPending(true);
-            setTimeout(window.hideLoader, 500);
-        };
-
-        document.getElementById('update-status-select').onchange = () => {
-            document.getElementById('done-photo-group').style.display = (document.getElementById('update-status-select').value === 'Done') ? 'block' : 'none';
-        };
-
-        document.getElementById('close-detail-btn').onclick = () => document.getElementById('detail-modal').style.display = 'none';
-        document.getElementById('logout-btn').onclick = () => { 
-            window.showLoader('Signing out...');
-            localStorage.clear(); 
-            setTimeout(() => { window.location.href = 'index.html'; }, 500);
-        };
-        document.getElementById('new-report-btn').onclick = () => { 
-            window.showLoader('Opening Report View...');
-            setTimeout(() => { window.location.href = 'defect.html'; }, 300);
-        };
-
-        async function loadAdminSelectors() {
-            const cached = localStorage.getItem('project_config');
-            if (!cached) return;
-            try {
-                const config = JSON.parse(cached);
-                const unitSelect = document.getElementById('admin-unit-select');
-                const storySelect = document.getElementById('admin-story-select');
-                const newUnitTypeSelect = document.getElementById('new-unit-number-type');
-                if (config.unitTypes) {
-                    const opts = config.unitTypes.map(u => `<option value="${u.value}">${u.label}</option>`).join('');
-                    if (unitSelect) unitSelect.innerHTML = opts;
-                    if (newUnitTypeSelect) newUnitTypeSelect.innerHTML = '<option value="">Select Type...</option>' + opts;
-                }
-                if (config.stories && storySelect) storySelect.innerHTML = config.stories.map(s => `<option value="${s.value}">${s.label}</option>`).join('');
-                const tbody = document.getElementById('admin-data-table-body');
-                if (tbody && config.unitNumbers) {
-                    tbody.innerHTML = config.unitNumbers.map(un => {
-                        const floors = (config.maps || []).filter(m => m.unit === un.type).map(m => m.story).join(', ') || 'No maps';
-                        return `<tr style="border-bottom: 1px solid var(--border-color);"><td style="padding: 10px;">${un.number}</td><td style="padding: 10px;">${un.type}</td><td style="padding: 10px;">${floors}</td></tr>`;
-                    }).join('') || '<tr><td colspan="3" style="padding: 20px; text-align: center;">No units</td></tr>';
-                }
-            } catch (e) {}
+            let html = filtered.map(d => `<div class="card" onclick="window.showDefectDetailById('${d.id}')" style="display:flex; align-items:center; gap:12px; padding:12px;">
+                <img src="${d.photo || (d.photoUrl ? fixMapUrl(d.photoUrl) : 'assets/floorplan-placeholder.png')}" style="width:60px; height:60px; border-radius:8px; object-fit:cover;">
+                <div style="flex:1;">
+                    <div style="font-weight:600;">${d.unit} - ${d.story}</div>
+                    <p style="font-size:0.875rem; color:#666;">${d.description}</p>
+                </div>
+                <span class="badge ${d.status}">${d.status}</span>
+            </div>`).join('');
+            dashboardContent.innerHTML = html || '<p style="text-align:center; padding:40px; color:#666;">No defects found.</p>';
         }
 
         async function authorizedPost(action, payload) {
@@ -564,89 +299,40 @@ document.addEventListener('DOMContentLoaded', async () => {
             } catch (e) { return null; }
         }
 
-        if (session.role === 'Admin' && adminLabel) adminLabel.style.display = 'flex';
-
-        newReportLabel.onclick = () => {
-            document.getElementById('new-report-radio').checked = true;
-            window.showLoader('Opening Report View...');
-            setTimeout(() => { window.location.href = 'defect.html'; }, 300);
-        };
-
-        syncLabel.onclick = async () => {
-            document.getElementById('sync-radio').checked = true;
-            showLoader('Full Synchronization in Progress...');
-            await syncAllPending(false);
-            await refreshConfig(false);
-            await checkAppVersion();
-            if ('serviceWorker' in navigator) { const reg = await navigator.serviceWorker.getRegistration(); if (reg) await reg.update(); }
-            hideLoader();
-        };
-
-        logoutLabel.onclick = () => {
-            document.getElementById('logout-radio').checked = true;
-            window.showLoader('Signing out...');
-            localStorage.clear(); 
-            setTimeout(() => { window.location.href = 'index.html'; }, 500);
-        };
-
-        if (adminLabel) {
-            adminLabel.onclick = () => {
-                document.getElementById('admin-radio').checked = true;
-                // Existing logic for admin button if any, or just visual feedback
-            };
-        }
-
-        // STARTUP FLOW:
-        window.showLoader('Checking for updates...');
-        
+        // --- STARTUP ---
+        await checkAppVersion();
+        window.showLoader('Syncing...');
         if (navigator.onLine) {
-            try {
-                window.showLoader('Syncing with Google Sheets...');
-                // 1. Upload any pending local changes
-                await syncAllPending(true);
-                // 2. Fetch fresh data from Google Sheets
-                await refreshConfig(true);
-                console.log("Cloud sync complete.");
-            } catch (e) { 
-                console.error("Online startup sync failed, falling back to cache:", e); 
-                await renderDashboard(false);
-            }
+            await syncAllPending(true);
+            await refreshConfig(true);
         } else {
-            // 3. Offline: Show cached data immediately
-            await renderDashboard(false);
+            await renderDashboard();
         }
-        
-        try {
-            await loadAdminSelectors();
-            await checkAppVersion();
-        } catch (e) { console.error("Post-load sequence error:", e); }
-        
-        setTimeout(window.hideLoader, 1000);
-        console.log("Dashboard initialization complete.");
+        window.hideLoader();
 
     } catch (err) {
-        console.error("Critical Dashboard Initialization Failure:", err);
+        console.error("Init Failure:", err);
         window.hideLoader();
-        const content = document.getElementById('dashboard-content');
-        if (content) content.innerHTML = `<div class="neu-raised" style="padding:30px;color:red;text-align:center;">Critical Error: ${err.message}<br><button onclick="window.location.reload()" class="primary" style="width:auto;margin-top:20px;">Retry</button></div>`;
     }
 });
 
+// Update modal logic
+document.getElementById('close-detail-btn').onclick = () => document.getElementById('detail-modal').style.display = 'none';
+document.getElementById('update-status-select').onchange = (e) => {
+    document.getElementById('done-photo-group').style.display = (e.target.value === 'Done') ? 'block' : 'none';
+};
 
-function compressImage(file, max, qual, cb) {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        const img = new Image();
-        img.onload = () => {
-            const canvas = document.createElement('canvas');
-            let w = img.width, h = img.height;
-            if (w > h) { if (w > max) { h *= max/w; w = max; } }
-            else { if (h > max) { w *= max/h; h = max; } }
-            canvas.width = w; canvas.height = h;
-            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-            cb(canvas.toDataURL('image/jpeg', qual));
-        };
-        img.src = e.target.result;
-    };
-    reader.readAsDataURL(file);
-}
+document.getElementById('save-update-btn').onclick = async () => {
+    const newStatus = document.getElementById('update-status-select').value;
+    window.showLoader('Saving...');
+    const updated = { ...currentUpdatingDefect, status: newStatus };
+    if (!updated.history) updated.history = [];
+    const note = document.getElementById('new-comment-input').value.trim();
+    if (note) updated.history.push({ time: new Date().toISOString(), msg: `Note: ${note}` });
+    
+    const db = await initDB();
+    delete updated.isSynced;
+    await db.put('pending_defects', updated);
+    document.getElementById('detail-modal').style.display = 'none';
+    window.location.reload(); // Simple refresh to show changes
+};

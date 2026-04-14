@@ -2,18 +2,18 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Defect Tracker - Floor Plan</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Defect Tracker - New Report</title>
     <link rel="stylesheet" href="style.css">
     <style>
-        .floorplan-container {
+        #map-container {
             position: relative;
             width: 100%;
-            max-width: 1000px;
-            margin: 20px auto;
+            background-color: #fff;
+            border-radius: 12px;
             overflow: hidden;
-            cursor: crosshair;
-            border-radius: 15px;
+            box-shadow: var(--shadow-soft);
+            touch-action: none;
         }
         #floorplan-img {
             width: 100%;
@@ -21,139 +21,155 @@
         }
         .pin {
             position: absolute;
-            transform: translate(-50%, -50%);
+            width: 24px;
+            height: 24px;
             border-radius: 50%;
-            z-index: 10;
+            border: 3px solid #fff;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
             cursor: pointer;
+            z-index: 10;
         }
-        #preview-img {
-            max-width: 100%;
-            margin-top: 15px;
+        #active-crosshair {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            border: 2px solid var(--primary-color);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
             display: none;
-            border-radius: 8px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            pointer-events: none;
+            z-index: 20;
+        }
+        #active-crosshair::after {
+            content: '';
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 8px; height: 8px;
+            background-color: var(--primary-color);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
         }
     </style>
 </head>
 <body>
-    <header>
-        <div class="header-row-1">
-            <div style="display: flex; align-items: center; gap: 10px;">
-                <button id="menu-toggle-btn" class="menu-toggle neu-raised" title="Toggle Menu">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
-                </button>
-                <span class="page-title">New Report</span>
+    <div class="app-container">
+        <!-- Top App Bar -->
+        <header class="top-app-bar">
+            <h1 class="title">New Report</h1>
+            <div id="connection-status" class="status-pill">
+                <span id="local-version-tag" style="opacity: 0.7;"></span>
+                <span id="status-icon">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"></path><path d="M1.42 9a16 16 0 0 1 21.16 0"></path><path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path><line x1="12" y1="20" x2="12.01" y2="20"></line></svg>
+                </span>
+                <span id="status-text">Online</span>
             </div>
-            
-            <div style="display: flex; align-items: center; gap: 8px;">
-                <div id="connection-status" class="status-container status-online" title="Connection Status">
-                    <span id="local-version-tag" style="font-size: 0.6rem; opacity: 0.8; margin-right: 4px; font-weight: 800;"></span>
-                    <span id="status-icon">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"></path><path d="M1.42 9a16 16 0 0 1 21.16 0"></path><path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path><line x1="12" y1="20" x2="12.01" y2="20"></line></svg>
-                    </span>
-                    <span id="status-text" style="font-size: 0.65rem;">Online</span>
-                    <span id="online-version-tag" class="version-badge" style="display: none; margin-left: 5px; background: var(--warning-color); color: white;"></span>
+        </header>
+
+        <main class="main-content" style="padding: 12px;">
+            <!-- Selection Context -->
+            <div class="card" style="margin-bottom: 12px; padding: 12px; display: flex; gap: 8px;">
+                <div style="flex: 1;">
+                    <select id="unit-number-select" style="font-size: 0.875rem; padding: 8px;"></select>
+                </div>
+                <div style="flex: 1;">
+                    <select id="story-select" style="font-size: 0.875rem; padding: 8px;"></select>
+                </div>
+            </div>
+
+            <!-- Context Info -->
+            <div style="padding: 0 4px 8px; display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 0.875rem; font-weight: 500; color: var(--text-secondary);">
+                    Unit <span id="current-unit-display">-</span> | Floor <span id="current-floor-display">-</span>
+                </span>
+                <p style="font-size: 0.75rem; color: var(--text-muted);">Tap map to place pin</p>
+            </div>
+
+            <!-- Map Area -->
+            <div id="map-container">
+                <img id="floorplan-img" src="assets/floorplan-placeholder.png">
+                <div id="pins-container"></div>
+                <div id="active-crosshair"></div>
+            </div>
+
+            <!-- Confirm Pin Action -->
+            <button id="confirm-pin-btn" class="primary" style="display: none; position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); z-index: 100; box-shadow: var(--shadow-medium); border-radius: 24px; height: 48px; padding: 0 32px;">
+                Report Defect at this Point
+            </button>
+        </main>
+
+        <!-- Bottom Navigation -->
+        <nav class="bottom-nav">
+            <a href="#" class="nav-item" id="back-label">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+                <span>Dashboard</span>
+            </a>
+            <a href="#" class="nav-item active" id="nav-add">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+                <span>Add Pin</span>
+            </a>
+            <a href="#" class="nav-item" id="sync-label">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 4V1L8 5l4 3V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>
+                <span>Sync</span>
+            </a>
+        </nav>
+    </div>
+
+    <!-- Full-Screen Entry Modal -->
+    <div id="defect-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-full">
+            <header class="modal-header">
+                <button id="cancel-defect-btn" style="background: none; padding: 8px; min-width: auto; height: auto;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+                <h2 style="flex-grow: 1; margin-left: 12px; font-size: 1.125rem;">Report Defect</h2>
+                <button id="save-defect-btn" class="primary" style="min-width: 80px; height: 36px; font-size: 0.875rem;">Save</button>
+            </header>
+            <div class="modal-body">
+                <div class="card" style="padding: 0; overflow: hidden; margin-bottom: 20px;">
+                    <div id="photo-placeholder" style="height: 200px; background-color: #e8eaed; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--text-secondary);">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor" style="margin-bottom: 12px; opacity: 0.5;"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 5H5l3.5-3.5z"/></svg>
+                        <p id="compressing-msg" style="display: none; font-weight: 500; color: var(--primary-color);">Compressing...</p>
+                        <label for="defect-photo" style="cursor: pointer; text-decoration: underline; font-weight: 500;">Take/Select Photo</label>
+                    </div>
+                    <img id="preview-img" style="width: 100%; display: none;">
+                    <input type="file" id="defect-photo" accept="image/*" capture="environment" style="display: none;">
+                </div>
+
+                <div class="input-group">
+                    <label>Description</label>
+                    <textarea id="defect-desc" rows="4" placeholder="Describe the issue..."></textarea>
                 </div>
             </div>
         </div>
-        <div id="nav-row" class="header-row-2">
-            <div class="radio-input">
-                <label id="sync-label">
-                    <input type="radio" name="nav" id="sync-radio">
-                    Sync All
-                </label>
-                <label id="back-label">
-                    <input type="radio" name="nav" id="back-radio">
-                    Dashboard
-                </label>
-            </div>
-        </div>
-    </header>
-
-    <div class="main-content">
-        <div class="selectors neu-raised">
-            <div class="input-group" style="flex: 1; min-width: 200px; margin-bottom: 0;">
-                <label>Unit Number</label>
-                <select id="unit-number-select"></select>
-            </div>
-            <div class="input-group" style="flex: 1; min-width: 200px; margin-bottom: 0;">
-                <label>Story / Floor</label>
-                <select id="story-select"></select>
-            </div>
-        </div>
-
-        <div style="margin-bottom: 20px; text-align: center;">
-            <h3 style="margin-bottom: 5px;">
-                <span id="current-unit-display" style="color: var(--accent-color);">Type-A</span> 
-                <span style="color: var(--text-muted); margin: 0 10px;">|</span> 
-                <span id="current-floor-display" style="color: var(--accent-color);">L1</span>
-            </h3>
-            <p>Click on the map to log a new defect report.</p>
-        </div>
-        
-        <div class="floorplan-container neu-inset" id="map-container">
-            <img src="assets/floorplan-placeholder.png" id="floorplan-img" alt="Floor Plan">
-            <div id="pins-container"></div>
-            <div id="active-crosshair" class="crosshair-pin pulse"></div>
-        </div>
-        
-        <button id="confirm-pin-btn" class="primary neu-raised" style="display: none; position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); width: auto; padding: 15px 40px; z-index: 1000; font-weight: 800; letter-spacing: 2px;">Confirm Position</button>
     </div>
 
-    <!-- Defect Entry Modal -->
-    <div id="defect-modal" class="defect-modal">
-        <div class="modal-content neu-raised" style="padding: 30px;">
-            <h3>New Defect Report</h3>
-            <div class="input-group" style="margin-top: 20px;">
-                <label>Description</label>
-                <textarea id="defect-desc" rows="4" placeholder="Describe the issue..."></textarea>
-            </div>
-            <div class="input-group">
-                <label>Attach Photo</label>
-                <input type="file" id="defect-photo" accept="image/*" capture="environment">
-                <p id="compressing-msg" style="display: none; color: var(--accent-color); font-size: 0.8rem; margin-top: 5px;">Compressing photo...</p>
-                <img id="preview-img" alt="Preview">
-            </div>
-            <div style="display: flex; gap: 15px; margin-top: 10px;">
-                <button id="save-defect-btn" class="success">Save Report</button>
-                <button id="cancel-defect-btn" class="danger">Cancel</button>
+    <!-- Info Detail Modal -->
+    <div id="detail-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-full">
+            <header class="modal-header">
+                <button id="close-detail-btn" style="background: none; padding: 8px; min-width: auto; height: auto;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+                <h2 style="flex-grow: 1; margin-left: 12px; font-size: 1.125rem;">Defect Info</h2>
+                <span id="detail-status" class="badge">Open</span>
+            </header>
+            <div class="modal-body">
+                <div class="card" style="padding: 0; overflow: hidden;">
+                    <img id="detail-img" class="defect-card-img" style="height: 240px;" src="assets/floorplan-placeholder.png">
+                    <div style="padding: 16px;">
+                        <p id="detail-desc" style="font-size: 1rem; color: var(--text-primary);"></p>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- View Detail Modal -->
-    <div id="detail-modal" class="defect-modal">
-        <div class="modal-content neu-raised" style="padding: 30px;">
-            <h3>Defect Detail</h3>
-            <div style="margin: 20px 0;">
-                <p style="margin-bottom: 10px;"><strong style="color: var(--text-color);">Status:</strong> <span id="detail-status" style="color: var(--accent-color);"></span></p>
-                <p><strong style="color: var(--text-color);">Description:</strong> <span id="detail-desc"></span></p>
-            </div>
-            <div id="detail-photo-container">
-                <img id="detail-img" style="max-width: 100%; margin-top: 15px; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.4);" alt="Defect Photo">
-            </div>
-            <button id="close-detail-btn" class="primary" style="margin-top: 25px;">Close Detail</button>
-        </div>
-    </div>
-
-    <!-- HIGH-END BRANDED LOADER -->
     <div id="global-loader">
-        <div class="spinner-container">
-            <div class="spinner-logo"></div>
-            <div class="slider-container">
-                <div class="slider-bar"></div>
-                <div class="slider-bar"></div>
-                <div class="slider-bar"></div>
-                <div class="slider-bar"></div>
-                <div class="slider-bar"></div>
-                <div class="slider-bar"></div>
-                <div class="slider-bar"></div>
-                <div class="slider-bar"></div>
-                <div class="slider-bar"></div>
-                <div class="slider-bar"></div>
-            </div>
-        </div>
-        <p id="loader-text">Loading...</p>
+        <div class="spinner"></div>
+        <p id="loader-text" style="margin-top: 16px; font-weight: 500;">Syncing...</p>
+    </div>
+
+    <!-- Hidden radios for logic compatibility -->
+    <div style="display: none;">
+        <input type="radio" id="sync-radio">
+        <input type="radio" id="back-radio">
     </div>
 
     <script src="libs/idb.js"></script>
