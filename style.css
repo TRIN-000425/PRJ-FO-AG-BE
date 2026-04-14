@@ -263,46 +263,46 @@ input:focus, select:focus, textarea:focus {
 
 /* Buttons */
 button {
-    width: 100%;
-    padding: 12px;
-    background: var(--card-bg);
-    border: none;
-    border-radius: 8px;
-    color: var(--text-color);
-    font-size: 1rem;
-    font-weight: 600;
-    cursor: pointer;
-    box-shadow: 5px 5px 10px var(--shadow-dark), 
-                -5px -5px 10px var(--shadow-light);
-    transition: all 0.2s ease;
-    text-transform: uppercase;
-    letter-spacing: 1px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  outline: none;
+  cursor: pointer;
+  width: auto;
+  min-width: 120px;
+  height: 45px;
+  padding: 0 20px;
+  background-image: linear-gradient(to top, #D8D9DB 0%, #fff 80%, #FDFDFD 100%);
+  border-radius: 30px;
+  border: 1px solid #8F9092;
+  transition: all 0.2s ease;
+  font-family: "Source Sans Pro", sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: #606060;
+  text-shadow: 0 1px #fff;
+  text-transform: none;
+  letter-spacing: normal;
 }
 
 button:hover {
-    color: var(--accent-color);
-    box-shadow: 2px 2px 5px var(--shadow-dark), 
-                -2px -2px 5px var(--shadow-light);
-    transform: translateY(1px);
+  box-shadow: 0 4px 3px 1px #FCFCFC, 0 6px 8px #D6D7D9, 0 -4px 4px #CECFD1, 0 -6px 4px #FEFEFE, inset 0 0 3px 3px #CECFD1;
+  color: #1a7bd0;
+  transform: none;
 }
 
 button:active {
-    box-shadow: inset 3px 3px 7px var(--shadow-dark), 
-                inset -3px -3px 7px var(--shadow-light);
-    transform: translateY(2px);
+  box-shadow: 0 4px 3px 1px #FCFCFC, 0 6px 8px #D6D7D9, 0 -4px 4px #CECFD1, 0 -6px 4px #FEFEFE, inset 0 0 5px 3px #999, inset 0 0 30px #aaa;
+  transform: translateY(1px);
 }
 
-button.primary {
-    color: var(--accent-color);
+button:focus {
+  box-shadow: 0 4px 3px 1px #FCFCFC, 0 6px 8px #D6D7D9, 0 -4px 4px #CECFD1, 0 -6px 4px #FEFEFE, inset 0 0 5px 3px #999, inset 0 0 30px #aaa;
 }
 
-button.danger {
-    color: var(--error-color);
-}
-
-button.success {
-    color: var(--success-color);
-}
+button.primary { color: var(--accent-color); }
+button.danger { color: var(--error-color); }
+button.success { color: var(--success-color); }
 
 button:disabled {
     opacity: 0.5;

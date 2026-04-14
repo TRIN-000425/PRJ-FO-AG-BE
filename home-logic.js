@@ -409,57 +409,96 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
 
-        searchInput.oninput = applyFilters;
-        filterStatus.onchange = applyFilters;
-        document.getElementById('reset-filter-btn').onclick = () => { searchInput.value = ''; filterStatus.value = 'all'; applyFilters(); };
-        viewGridBtn.onclick = () => { currentView = 'grid'; viewGridBtn.classList.add('success'); viewListBtn.classList.remove('success'); applyFilters(); };
-        viewListBtn.onclick = () => { currentView = 'list'; viewListBtn.classList.add('success'); viewGridBtn.classList.remove('success'); applyFilters(); };
+        if (searchInput) searchInput.oninput = applyFilters;
+        if (filterStatus) filterStatus.onchange = applyFilters;
+
+        const resetButton = document.getElementById('reset-filter-btn');
+        if (resetButton) resetButton.onclick = () => { if(searchInput) searchInput.value = ''; if(filterStatus) filterStatus.value = 'all'; applyFilters(); };
         
-        document.getElementById('banner-sync-btn').onclick = async () => {
-            window.showLoader('Uploading staged data...');
-            await syncAllPending(false);
-            window.hideLoader();
-        };
+        if (viewGridBtn) viewGridBtn.onclick = () => { currentView = 'grid'; viewGridBtn.classList.add('success'); if(viewListBtn) viewListBtn.classList.remove('success'); applyFilters(); };
+        if (viewListBtn) viewListBtn.onclick = () => { currentView = 'list'; viewListBtn.classList.add('success'); if(viewGridBtn) viewGridBtn.classList.remove('success'); applyFilters(); };
+        
+        const bannerSyncBtn = document.getElementById('banner-sync-btn');
+        if (bannerSyncBtn) {
+            bannerSyncBtn.onclick = async () => {
+                window.showLoader('Uploading staged data...');
+                await syncAllPending(false);
+                window.hideLoader();
+            };
+        }
 
-        document.getElementById('sync-btn').onclick = async () => {
-            showLoader('Full Synchronization in Progress...');
-            await syncAllPending(false);
-            await refreshConfig(false);
-            await checkAppVersion();
-            if ('serviceWorker' in navigator) { const reg = await navigator.serviceWorker.getRegistration(); if (reg) await reg.update(); }
-            hideLoader();
-        };
-
-        document.getElementById('refresh-admin-table-btn').onclick = () => refreshConfig(false);
-        document.getElementById('force-purge-btn').onclick = async () => {
-            if (confirm('Force purge local cache and re-download?')) {
-                window.showLoader('Clearing Cache...');
-                localStorage.removeItem('project_config');
-                await refreshConfig(false);
-            }
-        };
+        const refreshAdminBtn = document.getElementById('refresh-admin-table-btn');
+        if (refreshAdminBtn) refreshAdminBtn.onclick = () => refreshConfig(false);
+        
+        const forcePurgeBtn = document.getElementById('force-purge-btn');
+        if (forcePurgeBtn) {
+            forcePurgeBtn.onclick = async () => {
+                if (confirm('Force purge local cache and re-download?')) {
+                    window.showLoader('Clearing Cache...');
+                    localStorage.removeItem('project_config');
+                    await refreshConfig(false);
+                }
+            };
+        }
 
         window.addEventListener('online', () => { syncAllPending(true); refreshConfig(true); checkAppVersion(); });
         setInterval(syncAllPending, 15000);
         setInterval(checkAppVersion, 300000);
 
-        document.getElementById('add-comment-btn').onclick = async () => {
-            const msg = document.getElementById('new-comment-input').value.trim();
-            if (!msg || !currentUpdatingDefect) return;
-            window.showLoader('Adding note...');
-            if (!currentUpdatingDefect.history) currentUpdatingDefect.history = [];
-            currentUpdatingDefect.history.push({ time: new Date().toISOString(), msg: `Note: ${msg}` });
-            document.getElementById('new-comment-input').value = '';
-            const updated = { ...currentUpdatingDefect };
-            delete updated.isSynced;
-            await db.put('pending_defects', updated);
-            renderTimeline(currentUpdatingDefect, document.getElementById('defect-timeline'));
-            syncAllPending(true);
-            setTimeout(window.hideLoader, 300);
-        };
+        const addCommentBtn = document.getElementById('add-comment-btn');
+        if (addCommentBtn) {
+            addCommentBtn.onclick = async () => {
+                const commentInput = document.getElementById('new-comment-input');
+                const msg = commentInput ? commentInput.value.trim() : '';
+                if (!msg || !currentUpdatingDefect) return;
+                window.showLoader('Adding note...');
+                if (!currentUpdatingDefect.history) currentUpdatingDefect.history = [];
+                currentUpdatingDefect.history.push({ time: new Date().toISOString(), msg: `Note: ${msg}` });
+                if (commentInput) commentInput.value = '';
+                const updated = { ...currentUpdatingDefect };
+                delete updated.isSynced;
+                await db.put('pending_defects', updated);
+                renderTimeline(currentUpdatingDefect, document.getElementById('defect-timeline'));
+                syncAllPending(true);
+                setTimeout(window.hideLoader, 300);
+            };
+        }
 
-        document.getElementById('save-update-btn').onclick = async () => {
-            const newStatus = document.getElementById('update-status-select').value;
+        const saveUpdateBtn = document.getElementById('save-update-btn');
+        if (saveUpdateBtn) {
+            saveUpdateBtn.onclick = async () => {
+                const statusSelect = document.getElementById('update-status-select');
+                const newStatus = statusSelect ? statusSelect.value : 'Open';
+                if (newStatus === 'Done' && !updatedDonePhotoBase64 && !currentUpdatingDefect.donePhotoUrl) return alert('Completion photo is required.');
+                window.showLoader('Updating Status...');
+                if (newStatus !== currentUpdatingDefect.status) {
+                    if (!currentUpdatingDefect.history) currentUpdatingDefect.history = [];
+                    currentUpdatingDefect.history.push({ time: new Date().toISOString(), msg: `Status: ${newStatus}` });
+                }
+                const updated = { ...currentUpdatingDefect, status: newStatus, donePhoto: updatedDonePhotoBase64 || currentUpdatingDefect.donePhoto };
+                delete updated.isSynced;
+                await db.put('pending_defects', updated);
+                const modal = document.getElementById('detail-modal');
+                if (modal) modal.style.display = 'none';
+                await renderDashboard(false);
+                syncAllPending(true);
+                setTimeout(window.hideLoader, 500);
+            };
+        }
+
+        const updateStatusSelect = document.getElementById('update-status-select');
+        if (updateStatusSelect) {
+            updateStatusSelect.onchange = () => {
+                const donePhotoGroup = document.getElementById('done-photo-group');
+                if (donePhotoGroup) donePhotoGroup.style.display = (updateStatusSelect.value === 'Done') ? 'block' : 'none';
+            };
+        }
+
+        const closeDetailBtn = document.getElementById('close-detail-btn');
+        if (closeDetailBtn) closeDetailBtn.onclick = () => {
+            const modal = document.getElementById('detail-modal');
+            if (modal) modal.style.display = 'none';
+        };
             if (newStatus === 'Done' && !updatedDonePhotoBase64 && !currentUpdatingDefect.donePhotoUrl) return alert('Completion photo is required.');
             window.showLoader('Updating Status...');
             if (newStatus !== currentUpdatingDefect.status) {
