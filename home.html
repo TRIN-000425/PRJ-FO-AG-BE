@@ -44,10 +44,24 @@
             </div>
         </div>
         <div id="nav-row" class="header-row-2">
-            <button id="new-report-btn" class="success" style="width: auto; padding: 8px 15px; font-size: 0.75rem;">New Report</button>
-            <button id="sync-btn" class="primary" style="width: auto; padding: 8px 15px; font-size: 0.75rem;" title="Sync data to GA and check for app updates">Sync All</button>
-            <button id="admin-btn" class="primary" style="width: auto; padding: 8px 15px; font-size: 0.75rem; display: none;">Setup</button>
-            <button id="logout-btn" class="danger" style="width: auto; padding: 8px 15px; font-size: 0.75rem;">Logout</button>
+            <div class="radio-input">
+                <label id="new-report-label">
+                    <input type="radio" name="nav" id="new-report-radio">
+                    New Report
+                </label>
+                <label id="sync-label">
+                    <input type="radio" name="nav" id="sync-radio">
+                    Sync All
+                </label>
+                <label id="admin-label" style="display: none;">
+                    <input type="radio" name="nav" id="admin-radio">
+                    Setup
+                </label>
+                <label id="logout-label">
+                    <input type="radio" name="nav" id="logout-radio">
+                    Logout
+                </label>
+            </div>
         </div>
     </header>
 

@@ -88,43 +88,87 @@ header {
 }
 
 .header-row-2 {
-    display: flex; /* Show by default */
-    justify-content: flex-start;
-    align-items: center;
-    gap: 8px;
-    width: 100%;
-    overflow-x: auto;
-    padding-bottom: 5px;
-    scrollbar-width: none;
-}
-
-.header-row-2.active {
     display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    padding: 10px 0;
 }
 
-.header-row-2::-webkit-scrollbar {
-    display: none;
+.radio-input {
+  display: flex;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+  border-radius: 20px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.radio-input input {
+  display: none;
+}
+
+.radio-input label {
+  padding: 12px 20px;
+  cursor: pointer;
+  background: #fff;
+  transition: 0.3s;
+  font-weight: 700;
+  color: #666;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  border-right: 1px solid var(--shadow-dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.radio-input label:last-child {
+    border-right: none;
+}
+
+/* First Item (Blue) */
+.radio-input label:first-child:hover {
+    color: #1a7bd0;
+    background: #f0f7ff;
+}
+.radio-input label:first-child:has(input:checked) {
+  box-shadow: inset 0 0 5px rgba(26, 123, 208, 0.4);
+  background: linear-gradient(150deg, #ffffff, #a3c4f3);
+  color: #1a7bd0;
+}
+
+/* Middle Items (Green) */
+.radio-input label:hover {
+    color: #1a934c;
+    background: #f0fff4;
+}
+.radio-input label:has(input:checked) {
+  box-shadow: inset 0 0 5px rgba(46, 204, 113, 0.4);
+  background: linear-gradient(150deg, #eafaf1, #7bdc8d);
+  color: #1a934c;
+}
+
+/* Last Item (Red/Purple) */
+.radio-input label:last-child:hover {
+    color: #cf222e;
+    background: #fff0f0;
+}
+.radio-input label:last-child:has(input:checked) {
+  box-shadow: inset 0 0 5px rgba(207, 34, 46, 0.4);
+  background: linear-gradient(150deg, #fff0f0, #ffc1c1);
+  color: #cf222e;
 }
 
 .menu-toggle {
-    display: none; /* Hide toggle by default (desktop) */
-    width: auto;
-    padding: 8px;
-    background: none;
-    box-shadow: none;
-    border: 1px solid var(--shadow-dark);
+    display: none !important;
 }
 
 /* Responsive */
 @media (max-width: 600px) {
-    .header-row-2 {
-        display: none; /* Hide on mobile until toggled */
-    }
-    .header-row-2.active {
-        display: flex;
-    }
-    .menu-toggle {
-        display: block; /* Show toggle on mobile */
+    .radio-input label {
+        padding: 10px 12px;
+        font-size: 0.65rem;
     }
     .selectors {
         flex-direction: column;

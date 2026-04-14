@@ -147,16 +147,6 @@ function renderTimeline(defect, container) {
 
 document.addEventListener('DOMContentLoaded', async () => {
     console.log("Dashboard initializing...");
-    const menuToggleBtn = document.getElementById('menu-toggle-btn');
-    const navRow = document.getElementById('nav-row');
-
-    // --- EARLY NAV TOGGLE BINDING ---
-    if (menuToggleBtn && navRow) {
-        menuToggleBtn.onclick = () => {
-            console.log("Menu toggled");
-            navRow.classList.toggle('active');
-        };
-    }
 
     try {
         window.showLoader('Initializing Dashboard...');
@@ -173,6 +163,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         const filterStatus = document.getElementById('filter-status');
         const viewGridBtn = document.getElementById('view-grid-btn');
         const viewListBtn = document.getElementById('view-list-btn');
+
+        const newReportLabel = document.getElementById('new-report-label');
+        const syncLabel = document.getElementById('sync-label');
+        const adminLabel = document.getElementById('admin-label');
+        const logoutLabel = document.getElementById('logout-label');
 
         let masterDefectList = [];
         let projectConfig = { syncedDefects: [], unitNumbers: [], stories: [], unitTypes: [], maps: [] };
@@ -482,10 +477,39 @@ document.addEventListener('DOMContentLoaded', async () => {
             } catch (e) { return null; }
         }
 
-        if (session.role === 'Admin') document.getElementById('admin-btn').style.display = 'block';
-        
-        // STARTUP FLOW:
-        // 1. Show existing cache immediately
+        if (session.role === 'Admin' && adminLabel) adminLabel.style.display = 'flex';
+
+        newReportLabel.onclick = () => {
+            document.getElementById('new-report-radio').checked = true;
+            window.showLoader('Opening Report View...');
+            setTimeout(() => { window.location.href = 'defect.html'; }, 300);
+        };
+
+        syncLabel.onclick = async () => {
+            document.getElementById('sync-radio').checked = true;
+            showLoader('Full Synchronization in Progress...');
+            await syncAllPending(false);
+            await refreshConfig(false);
+            await checkAppVersion();
+            if ('serviceWorker' in navigator) { const reg = await navigator.serviceWorker.getRegistration(); if (reg) await reg.update(); }
+            hideLoader();
+        };
+
+        logoutLabel.onclick = () => {
+            document.getElementById('logout-radio').checked = true;
+            window.showLoader('Signing out...');
+            localStorage.clear(); 
+            setTimeout(() => { window.location.href = 'index.html'; }, 500);
+        };
+
+        if (adminLabel) {
+            adminLabel.onclick = () => {
+                document.getElementById('admin-radio').checked = true;
+                // Existing logic for admin button if any, or just visual feedback
+            };
+        }
+
+        // STARTUP FLOW:        // 1. Show existing cache immediately
         try {
             await renderDashboard(false);
             await loadAdminSelectors();

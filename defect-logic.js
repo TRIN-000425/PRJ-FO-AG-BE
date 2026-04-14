@@ -66,8 +66,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         const previewImg = document.getElementById('preview-img');
         const saveBtn = document.getElementById('save-defect-btn');
         const cancelBtn = document.getElementById('cancel-defect-btn');
-        const syncBtn = document.getElementById('sync-btn');
-        const backBtn = document.getElementById('back-btn');
+        const syncBtn = document.getElementById('sync-btn'); // Fallback if still used elsewhere
+        const backBtn = document.getElementById('back-btn'); // Fallback if still used elsewhere
+        const syncLabel = document.getElementById('sync-label');
+        const backLabel = document.getElementById('back-label');
+
         const syncIndicator = document.getElementById('sync-indicator');
 
         const detailModal = document.getElementById('detail-modal');
@@ -164,12 +167,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         syncAllPending();
         checkAppVersion();
 
-        syncBtn.onclick = async () => {
+        syncLabel.onclick = async () => {
+            document.getElementById('sync-radio').checked = true;
             showLoader('Synchronizing data with cloud...');
             await syncAllPending();
             await checkAppVersion();
             if ('serviceWorker' in navigator) { const reg = await navigator.serviceWorker.getRegistration(); if (reg) await reg.update(); }
             hideLoader();
+        };
+
+        backLabel.onclick = () => {
+            document.getElementById('back-radio').checked = true;
+            window.showLoader('Returning to Dashboard...');
+            setTimeout(() => { window.location.href = 'home.html'; }, 300);
         };
 
         // --- CONFIG & RENDER ---
