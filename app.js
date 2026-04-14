@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const passwordGroup = document.getElementById('password-group');
     const otpInput = document.getElementById('otp');
     const changeUsernameLink = document.getElementById('change-username-link');
-    const APP_VERSION = "1.7.1";
+    const APP_VERSION = "1.7.2";
 
     // GA_BACKEND_URL is defined in config.js
 
@@ -47,11 +47,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const otp = otpInput.value.trim();
         const deviceId = getDeviceId();
 
-        // Determine action: if OTP field is showing, we are verifying OTP
         const isOtpStep = otpGroup.style.display === 'block';
         const action = isOtpStep ? 'verify_otp' : 'login';
         
-        showLoader(isOtpStep ? 'Verifying Authentication Code...' : 'Authenticating with Cloud...');
+        showLoader(isOtpStep ? 'Verifying Code...' : 'Authenticating...');
         
         try {
             const payload = { action, username, password, otp, deviceId };
@@ -69,13 +68,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 passwordGroup.style.display = 'none';
                 otpGroup.style.display = 'block';
                 document.getElementById('username').readOnly = true;
-                showMessage(`Device not recognized. Device ID: ${deviceId}. Please enter OTP from Admin.`, 'info');
+                showMessage(`Device not recognized. ID: ${deviceId}. Enter OTP.`, 'info');
             } else if (result.status === 'success') {
-                showLoader('Authorization confirmed! Loading dashboard...');
-                localStorage.setItem('user_session', JSON.stringify(result.session || result.user)); // result.session usually from login, result.user from verify_otp
-                
-                // If backend sent session object inside result.session, keep it. 
-                // If it sent user and deviceToken separately (like handleVerifyOtp), reconstruct it.
+                showLoader('Confirmed! Loading...');
+                localStorage.setItem('user_session', JSON.stringify(result.session || result.user));
                 if (result.user && result.deviceToken) {
                     localStorage.setItem('user_session', JSON.stringify({
                         ...result.user,
@@ -83,14 +79,13 @@ document.addEventListener('DOMContentLoaded', () => {
                         deviceToken: result.deviceToken
                     }));
                 }
-
                 setTimeout(() => { window.location.href = 'home.html'; }, 800);
             } else {
-                showMessage(result.message || 'Authentication failed', 'error');
+                showMessage(result.message || 'Error', 'error');
             }
         } catch (err) {
             hideLoader();
-            showMessage('Connection error to backend.', 'error');
+            showMessage('Connection error.', 'error');
         }
     });
 
@@ -105,7 +100,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function showLoader(text) {
         const loaderText = document.getElementById('loader-text');
-        if (loaderText) loaderText.textContent = text;
+        if (loaderText) loaderText.textContent = text || 'Loading...';
         document.getElementById('global-loader').style.display = 'flex';
     }
     function hideLoader() { document.getElementById('global-loader').style.display = 'none'; }

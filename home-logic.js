@@ -145,7 +145,7 @@ function renderTimeline(defect, container) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-    window.showLoader('Initializing...');
+    window.showLoader('Initializing Dashboard...');
     
     const session = JSON.parse(localStorage.getItem('user_session'));
     if (!session) { window.location.href = 'index.html'; return; }
@@ -180,15 +180,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function checkUnsynced() {
         const pending = await db.getAll('pending_defects');
         if (pending.length > 0) {
-            unsyncedBanner.style.display = 'block';
-            unsyncedCountEl.textContent = pending.length;
+            if (unsyncedBanner) unsyncedBanner.style.display = 'block';
+            if (unsyncedCountEl) unsyncedCountEl.textContent = pending.length;
         } else {
-            unsyncedBanner.style.display = 'none';
+            if (unsyncedBanner) unsyncedBanner.style.display = 'none';
         }
     }
 
     async function renderDashboard(useLoader = false) {
-        if (useLoader) window.showLoader('Syncing view...');
+        if (useLoader) window.showLoader('Updating View...');
         const cached = localStorage.getItem('project_config');
         if (cached) projectConfig = JSON.parse(cached);
         const pending = await db.getAll('pending_defects');
@@ -216,11 +216,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function renderGridView(filtered) {
-        if (filtered.length === 0) { dashboardContent.innerHTML = '<p style="text-align:center;padding:50px;">No matches.</p>'; return; }
+        if (filtered.length === 0) { 
+            dashboardContent.innerHTML = '<div style="text-align:center;padding:50px;"><p class="neu-inset" style="padding:20px;display:inline-block;">No defects found matching your criteria.</p></div>'; 
+            return; 
+        }
         const grouped = groupDefects(filtered);
         let html = '';
         for (const [unit, defects] of Object.entries(grouped)) {
-            html += `<div class="unit-section"><h3>${unit}</h3><div class="defect-grid">`;
+            html += `<div class="unit-section"><h3 class="unit-header">${unit}</h3><div class="defect-grid">`;
             html += defects.map(d => {
                 const photo = d.donePhotoUrl ? fixMapUrl(d.donePhotoUrl) : (d.photo || (d.photoUrl ? fixMapUrl(d.photoUrl) : 'assets/floorplan-placeholder.png'));
                 return `
@@ -237,12 +240,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function renderListView(filtered) {
-        if (filtered.length === 0) { dashboardContent.innerHTML = '<p style="text-align:center;padding:50px;">No matches.</p>'; return; }
+        if (filtered.length === 0) { 
+            dashboardContent.innerHTML = '<div style="text-align:center;padding:50px;"><p class="neu-inset" style="padding:20px;display:inline-block;">No defects found matching your criteria.</p></div>'; 
+            return; 
+        }
         const grouped = groupDefects(filtered);
         let html = '';
         for (const [unit, defects] of Object.entries(grouped)) {
             html += `<div class="unit-section neu-raised" style="padding:20px;border-radius:20px;margin-bottom:30px;">
-                <div style="display:flex;justify-content:space-between;margin-bottom:15px;"><h3>Unit: ${unit}</h3><button class="primary" onclick="window.exportUnitPDF('${unit}')" style="width:auto;padding:5px 15px;">PDF Report</button></div>`;
+                <div style="display:flex;justify-content:space-between;margin-bottom:15px;align-items:center;"><h3>Unit: ${unit}</h3><button class="primary" onclick="window.exportUnitPDF('${unit}')" style="width:auto;padding:5px 15px;font-size:0.75rem;">PDF Report</button></div>`;
             const storyGroups = defects.reduce((acc, d) => { if (!acc[d.story]) acc[d.story] = []; acc[d.story].push(d); return acc; }, {});
             for (const [story, sDefects] of Object.entries(storyGroups)) {
                 const mapMapping = projectConfig.unitNumbers.find(u => u.number === unit);
@@ -284,7 +290,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (pending.length === 0) { updateSyncUI('online'); return; }
         isSyncing = true; updateSyncUI('syncing');
         for (let i = 0; i < pending.length; i++) {
-            if (!silent) window.showLoader(`Uploading staged report ${i + 1} of ${pending.length}...`);
+            if (!silent) window.showLoader(`Syncing staged reports (${i + 1}/${pending.length})...`);
             try {
                 const res = await authorizedPost('sync_defects', { defect: pending[i] });
                 if (res && (await res.json()).status === 'success') await db.delete('pending_defects', pending[i].id);
@@ -298,7 +304,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     async function refreshConfig(silent = true) {
         if (!navigator.onLine) return;
-        if (!silent) window.showLoader('Syncing with Cloud...');
+        if (!silent) window.showLoader('Fetching Cloud Setup...');
         try {
             const res = await authorizedPost('get_config', {});
             if (res) {
@@ -347,13 +353,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('reset-filter-btn').onclick = () => { searchInput.value = ''; filterStatus.value = 'all'; applyFilters(); };
     viewGridBtn.onclick = () => { currentView = 'grid'; viewGridBtn.classList.add('success'); viewListBtn.classList.remove('success'); applyFilters(); };
     viewListBtn.onclick = () => { currentView = 'list'; viewListBtn.classList.add('success'); viewGridBtn.classList.remove('success'); applyFilters(); };
+    
     document.getElementById('banner-sync-btn').onclick = async () => {
-        window.showLoader('Syncing All Data...');
+        window.showLoader('Uploading staged data...');
         await syncAllPending(false);
         window.hideLoader();
     };
+
     document.getElementById('sync-btn').onclick = async () => {
-        showLoader('Full Cloud Sync & Update Check...');
+        showLoader('Full Synchronization in Progress...');
         await syncAllPending(false);
         await refreshConfig(false);
         await checkAppVersion();
@@ -364,7 +372,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('refresh-admin-table-btn').onclick = () => refreshConfig(false);
     document.getElementById('force-purge-btn').onclick = async () => {
         if (confirm('Force purge local cache and re-download?')) {
-            window.showLoader('Purging local database...');
+            window.showLoader('Clearing Cache...');
             localStorage.removeItem('project_config');
             await refreshConfig(false);
         }
@@ -377,7 +385,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('add-comment-btn').onclick = async () => {
         const msg = document.getElementById('new-comment-input').value.trim();
         if (!msg || !currentUpdatingDefect) return;
-        window.showLoader('Persisting note locally...');
+        window.showLoader('Adding note...');
         if (!currentUpdatingDefect.history) currentUpdatingDefect.history = [];
         currentUpdatingDefect.history.push({ time: new Date().toISOString(), msg: `Note: ${msg}` });
         document.getElementById('new-comment-input').value = '';
@@ -391,8 +399,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     document.getElementById('save-update-btn').onclick = async () => {
         const newStatus = document.getElementById('update-status-select').value;
-        if (newStatus === 'Done' && !updatedDonePhotoBase64 && !currentUpdatingDefect.donePhotoUrl) return alert('Photo required.');
-        window.showLoader('Saving changes to local DB...');
+        if (newStatus === 'Done' && !updatedDonePhotoBase64 && !currentUpdatingDefect.donePhotoUrl) return alert('Completion photo is required.');
+        window.showLoader('Updating Status...');
         if (newStatus !== currentUpdatingDefect.status) {
             if (!currentUpdatingDefect.history) currentUpdatingDefect.history = [];
             currentUpdatingDefect.history.push({ time: new Date().toISOString(), msg: `Status: ${newStatus}` });
@@ -417,7 +425,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         setTimeout(() => { window.location.href = 'index.html'; }, 500);
     };
     document.getElementById('new-report-btn').onclick = () => { 
-        window.showLoader('Loading Floor Plan...');
+        window.showLoader('Opening Report View...');
         setTimeout(() => { window.location.href = 'defect.html'; }, 300);
     };
 
@@ -466,14 +474,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     // 2. Perform Sync & Refresh
     if (navigator.onLine) {
-        window.showLoader('Syncing with Cloud...');
+        window.showLoader('Verifying Cloud Data...');
         const pending = await db.getAll('pending_defects');
-        if (pending.length > 0) window.showLoader('Uploading staged reports...');
-        await syncAllPending(false);
-        await refreshConfig(false);
+        if (pending.length > 0) window.showLoader('Pushing local updates...');
+        await syncAllPending(true);
+        await refreshConfig(true);
     }
     
-    window.hideLoader();
+    setTimeout(window.hideLoader, 800);
 });
 
 function compressImage(file, max, qual, cb) {
