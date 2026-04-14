@@ -596,23 +596,32 @@ document.addEventListener('DOMContentLoaded', async () => {
             };
         }
 
-        // STARTUP FLOW:        // 1. Show existing cache immediately
-        try {
-            await renderDashboard(false);
-            await loadAdminSelectors();
-            await checkAppVersion();
-        } catch (e) { console.error("Initial load sequence error:", e); }
+        // STARTUP FLOW:
+        window.showLoader('Checking for updates...');
         
-        // 2. Perform Sync & Refresh
         if (navigator.onLine) {
             try {
-                const pending = await db.getAll('pending_defects');
-                if (pending.length > 0) await syncAllPending(true);
+                window.showLoader('Syncing with Google Sheets...');
+                // 1. Upload any pending local changes
+                await syncAllPending(true);
+                // 2. Fetch fresh data from Google Sheets
                 await refreshConfig(true);
-            } catch (e) { console.error("Cloud sync/refresh error:", e); }
+                console.log("Cloud sync complete.");
+            } catch (e) { 
+                console.error("Online startup sync failed, falling back to cache:", e); 
+                await renderDashboard(false);
+            }
+        } else {
+            // 3. Offline: Show cached data immediately
+            await renderDashboard(false);
         }
         
-        setTimeout(window.hideLoader, 800);
+        try {
+            await loadAdminSelectors();
+            await checkAppVersion();
+        } catch (e) { console.error("Post-load sequence error:", e); }
+        
+        setTimeout(window.hideLoader, 1000);
         console.log("Dashboard initialization complete.");
 
     } catch (err) {
