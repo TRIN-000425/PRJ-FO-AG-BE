@@ -17,11 +17,12 @@ async function initDB() {
 }
 
 async function checkAppVersion() {
-    if (!navigator.onLine) return;
     const onlineTag = document.getElementById('online-version-tag');
     const localTag = document.getElementById('local-version-tag');
     const version = (typeof APP_VERSION !== 'undefined') ? APP_VERSION : (window.APP_VERSION || "1.7.4");
     if (localTag) localTag.textContent = 'v' + version;
+
+    if (!navigator.onLine) return;
 
     try {
         const res = await fetch('version.json?t=' + Date.now());

@@ -22,6 +22,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         async function checkAppVersion() {
+            const version = (typeof APP_VERSION !== 'undefined') ? APP_VERSION : (window.APP_VERSION || "1.7.4");
+            // App logic doesn't have a local-version-tag element usually, but let's be safe
+            const localTag = document.getElementById('local-version-tag');
+            if (localTag) localTag.textContent = 'v' + version;
+
             if (!navigator.onLine) return;
             try {
                 const res = await fetch('version.json?t=' + Date.now());
