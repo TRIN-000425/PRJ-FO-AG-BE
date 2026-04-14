@@ -31,7 +31,7 @@
             
             <div style="display: flex; align-items: center; gap: 8px;">
                 <div id="version-status" class="status-container" style="background: none; padding: 0;">
-                    <span id="local-version-tag" class="version-badge">v1.7.0</span>
+                    <span id="local-version-tag" class="version-badge">v1.7.2</span>
                     <span id="online-version-tag" class="version-badge" style="display: none;"></span>
                 </div>
                 <div id="connection-status" class="status-container status-online" title="Connection Status">
@@ -49,82 +49,6 @@
             <button id="logout-btn" class="danger" style="width: auto; padding: 8px 15px; font-size: 0.75rem;">Logout</button>
         </div>
     </header>
-
-    <!-- Admin Setup Modal -->
-    <div id="admin-modal" class="defect-modal">
-        <div class="modal-content neu-raised" style="max-width: 700px; padding: 30px;">
-            <h3 style="text-align: center; margin-bottom: 25px;">Project Configuration</h3>
-            
-            <div style="display: flex; flex-direction: column; gap: 25px;">
-                <!-- Section 1: Units -->
-                <div class="neu-inset" style="padding: 20px; border-radius: 15px;">
-                    <h4 style="color: var(--accent-color); margin-bottom: 5px;">Step 1: Define Unit Types</h4>
-                    <p style="font-size: 0.8rem; margin-bottom: 15px;">Add structural types (e.g., Studio, 2-BR, T7).</p>
-                    <div style="display: flex; gap: 10px;">
-                        <input type="text" id="new-unit-val" placeholder="ID (T7)" style="flex: 1;">
-                        <input type="text" id="new-unit-label" placeholder="Display Name (Type 7)" style="flex: 1;">
-                        <button id="add-unit-btn" class="primary" style="width: auto; padding: 0 20px;">Add</button>
-                    </div>
-                </div>
-
-                <!-- Section 1b: Unit Numbers -->
-                <div class="neu-inset" style="padding: 20px; border-radius: 15px;">
-                    <h4 style="color: var(--accent-color); margin-bottom: 5px;">Step 2: Define Specific Unit Numbers</h4>
-                    <div style="display: flex; gap: 10px; margin-bottom: 10px;">
-                        <input type="text" id="new-unit-number-val" placeholder="Unit No (e.g. A-101)" style="flex: 1.5;">
-                        <select id="new-unit-number-type" style="flex: 1;"><option value="">Select Type...</option></select>
-                    </div>
-                    <button id="add-single-unit-btn" class="primary" style="width: auto; padding: 0 20px;">Add Unit Number</button>
-                </div>
-
-                <!-- Section 2: Stories -->
-                <div class="neu-inset" style="padding: 20px; border-radius: 15px;">
-                    <h4 style="color: var(--accent-color); margin-bottom: 5px;">Step 3: Define Stories / Floors</h4>
-                    <div style="display: flex; gap: 10px;">
-                        <input type="text" id="new-story-val" list="common-stories" placeholder="ID (L1)" style="flex: 1;">
-                        <datalist id="common-stories"><option value="Basement"><option value="L1"><option value="L2"><option value="Rooftop"></datalist>
-                        <input type="text" id="new-story-label" placeholder="Display Name" style="flex: 1;">
-                        <button id="add-story-btn" class="primary" style="width: auto; padding: 0 20px;">Add</button>
-                    </div>
-                </div>
-
-                <!-- Section 3: Maps -->
-                <div class="neu-inset" style="padding: 20px; border-radius: 15px;">
-                    <h4 style="color: var(--accent-color); margin-bottom: 5px;">Step 4: Upload Floor Plans</h4>
-                    <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-                        <select id="admin-unit-select" style="flex: 1;"></select>
-                        <select id="admin-story-select" style="flex: 1;"></select>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 15px;">
-                        <input type="file" id="map-upload-input" accept="image/png" style="flex: 1;">
-                        <button id="upload-map-btn" class="success" style="width: auto; padding: 0 20px;">Upload PNG</button>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 15px; margin-top: 15px;">
-                        <input type="text" id="map-url-input" placeholder="Or Map URL (Google Drive)" style="flex: 1;">
-                        <button id="add-map-url-btn" class="primary" style="width: auto; padding: 0 20px;">Add URL</button>
-                    </div>
-                </div>
-
-                <!-- Section 4: Data Overview -->
-                <div class="neu-inset" style="padding: 20px; border-radius: 15px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                        <h4 style="color: var(--accent-color); margin: 0;">Project Data</h4>
-                        <div style="display: flex; gap: 8px;">
-                            <button id="refresh-admin-table-btn" class="primary" style="width: auto; padding: 5px 12px; font-size: 0.7rem;">Quick Refresh</button>
-                            <button id="force-purge-btn" class="danger" style="width: auto; padding: 5px 12px; font-size: 0.7rem;" title="Clears local cache and re-downloads everything">Force Purge & Reload</button>
-                        </div>
-                    </div>
-                    <div style="max-height: 250px; overflow-y: auto;">
-                        <table style="width: 100%; border-collapse: collapse; font-size: 0.8rem;">
-                            <thead><tr style="border-bottom: 2px solid var(--border-color); color: var(--text-muted);"><th style="padding: 10px;">Unit</th><th style="padding: 10px;">Type</th><th style="padding: 10px;">Maps</th></tr></thead>
-                            <tbody id="admin-data-table-body"></tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-            <button id="close-admin-btn" class="danger" style="margin-top: 30px;">Close Configuration</button>
-        </div>
-    </div>
 
     <div class="main-content">
         <div style="margin-bottom: 30px;">
@@ -196,14 +120,29 @@
         </div>
     </div>
 
-    <div id="global-loader" class="global-loader">
-        <div class="spinner"></div>
-        <p id="loader-text">Loading...</p>
+    <!-- HIGH-END BRANDED LOADER -->
+    <div id="global-loader">
+        <div class="spinner-container">
+            <div class="spinner-logo"></div>
+            <div class="slider-container">
+                <div class="slider-bar"></div>
+                <div class="slider-bar"></div>
+                <div class="slider-bar"></div>
+                <div class="slider-bar"></div>
+                <div class="slider-bar"></div>
+                <div class="slider-bar"></div>
+                <div class="slider-bar"></div>
+                <div class="slider-bar"></div>
+                <div class="slider-bar"></div>
+                <div class="slider-bar"></div>
+            </div>
+        </div>
+        <p id="loader-text">Initializing Dashboard...</p>
     </div>
 
     <script src="libs/idb.js"></script>
     <script src="config.js"></script>
-    <script src="home-logic.js?v=1.6.9"></script>
+    <script src="home-logic.js?v=1.7.2"></script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
@@ -220,7 +159,7 @@
             });
         }
     </script>
-    <div style="position: fixed; bottom: 10px; right: 15px; font-size: 0.7rem; color: var(--text-muted); opacity: 0.5; z-index: 10000;">v1.7.1</div>
+    <div style="position: fixed; bottom: 10px; right: 15px; font-size: 0.7rem; color: var(--text-muted); opacity: 0.5; z-index: 10000;">v1.7.2</div>
 
 </body>
 </html>

@@ -476,36 +476,104 @@ button:disabled {
     color: var(--success-color);
 }
 
-/* Global Loader */
-.global-loader {
+/* Global Loader & Branded Overlay */
+#global-loader {
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.7);
-    backdrop-filter: blur(5px);
+    background-color: #f0f3f6;
     display: none;
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    z-index: 99999;
-    color: white;
+    z-index: 15000;
+    overflow: hidden;
 }
 
-.spinner {
-    width: 50px;
-    height: 50px;
-    border: 5px solid rgba(255, 255, 255, 0.3);
-    border-top: 5px solid var(--accent-color);
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin-bottom: 20px;
+.spinner-container {
+    position: relative;
+    width: 240px;
+    height: 240px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: visible;
 }
 
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+.spinner-logo {
+    background-image: url('https://trinitiland.com/wp-content/uploads/2022/10/7c4ce074ba092be0c80d3323b1041cda-2048x1858.png');
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    width: 180px;
+    height: 180px;
+    position: relative;
+    z-index: 3;
+    animation: logoAppear 0.8s ease-out forwards;
+}
+
+@keyframes logoAppear {
+    0% { transform: scale(0.7); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+.slider-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    transform: rotate(-45deg) scale(2);
+    transform-origin: center center;
+    overflow: hidden;
+    z-index: -1;
+    opacity: 0.6;
+}
+
+.slider-bar {
+    position: absolute;
+    width: 200vw;
+    height: 30vh;
+    background: linear-gradient(90deg, rgba(24, 119, 242, 0) 0%, rgba(24, 119, 242, 0.15) 50%, rgba(24, 119, 242, 0) 100%);
+    right: -100vw;
+    transform-origin: center center;
+    transform: scaleY(1.2) scaleX(0.7);
+    animation: sliderAnimation 5s linear infinite;
+}
+
+.slider-bar:nth-child(1) { top: -22.5%; animation-delay: 0s; }
+.slider-bar:nth-child(2) { top: -15%; animation-delay: 0.5s; }
+.slider-bar:nth-child(3) { top: -7.5%; animation-delay: 1s; }
+.slider-bar:nth-child(4) { top: 0%; animation-delay: 1.5s; }
+.slider-bar:nth-child(5) { top: 7.5%; animation-delay: 2s; }
+.slider-bar:nth-child(6) { top: 15%; animation-delay: 2.5s; }
+.slider-bar:nth-child(7) { top: 22.5%; animation-delay: 3s; }
+.slider-bar:nth-child(8) { top: 30%; animation-delay: 3.5s; }
+.slider-bar:nth-child(9) { top: 37.5%; animation-delay: 4s; }
+.slider-bar:nth-child(10) { top: 45%; animation-delay: 4.5s; }
+
+@keyframes sliderAnimation {
+    0% { right: -100vw; }
+    100% { right: 200vw; }
+}
+
+#loader-text {
+    color: #333333;
+    font-weight: 700;
+    margin-top: 25px;
+    position: relative;
+    z-index: 3;
+    font-size: 1.1rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    animation: textAppear 0.8s ease-out forwards;
+}
+
+@keyframes textAppear {
+    0% { opacity: 0; transform: translateY(10px); }
+    100% { opacity: 1; transform: translateY(0); }
 }
 
 /* Responsive */

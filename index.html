@@ -33,13 +33,27 @@
         </form>
     </div>
 
-    <div id="global-loader" class="global-loader">
-        <div class="spinner"></div>
-        <p id="loader-text">Loading...</p>
+    <div id="global-loader">
+        <div class="spinner-container">
+            <div class="spinner-logo"></div>
+            <div class="slider-container">
+                <div class="slider-bar"></div>
+                <div class="slider-bar"></div>
+                <div class="slider-bar"></div>
+                <div class="slider-bar"></div>
+                <div class="slider-bar"></div>
+                <div class="slider-bar"></div>
+                <div class="slider-bar"></div>
+                <div class="slider-bar"></div>
+                <div class="slider-bar"></div>
+                <div class="slider-bar"></div>
+            </div>
+        </div>
+        <p id="loader-text">Initializing...</p>
     </div>
 
     <script src="config.js"></script>
-    <script src="app.js?v=1.7.1"></script>
+    <script src="app.js?v=1.7.2"></script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
@@ -51,6 +65,18 @@
                             const installingWorker = reg.installing;
                             installingWorker.onstatechange = () => {
                                 if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                    window.location.reload();
+                                }
+                            };
+                        };
+                    })
+                    .catch(err => console.error('Service Worker registration failed', err));
+            });
+        }
+    </script>
+    <div style="position: fixed; bottom: 10px; right: 15px; font-size: 0.7rem; color: var(--text-muted); opacity: 0.5; z-index: 10000;">v1.7.2</div>
+    </body></html>
+                   if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
                                     window.location.reload();
                                 }
                             };

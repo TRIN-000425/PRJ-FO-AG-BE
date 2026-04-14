@@ -3,7 +3,7 @@ let currentUpdatingDefect = null;
 let updatedDonePhotoBase64 = null;
 let isSyncing = false;
 let currentView = 'grid';
-const APP_VERSION = "1.7.1";
+const APP_VERSION = "1.7.2";
 
 window.allRenderedDefects = {};
 
@@ -145,6 +145,8 @@ function renderTimeline(defect, container) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
+    window.showLoader('Initializing...');
+    
     const session = JSON.parse(localStorage.getItem('user_session'));
     if (!session) { window.location.href = 'index.html'; return; }
 
@@ -186,7 +188,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     async function renderDashboard(useLoader = false) {
-        if (useLoader) window.showLoader('Recalculating lifecycle data...');
+        if (useLoader) window.showLoader('Syncing view...');
         const cached = localStorage.getItem('project_config');
         if (cached) projectConfig = JSON.parse(cached);
         const pending = await db.getAll('pending_defects');
@@ -276,26 +278,27 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // --- SYNC & REFRESH ---
-    async function syncAllPending() {
+    async function syncAllPending(silent = false) {
         if (isSyncing || !navigator.onLine) { updateSyncUI(navigator.onLine ? 'online' : 'offline'); return; }
         const pending = await db.getAll('pending_defects');
         if (pending.length === 0) { updateSyncUI('online'); return; }
         isSyncing = true; updateSyncUI('syncing');
-        for (const d of pending) {
+        for (let i = 0; i < pending.length; i++) {
+            if (!silent) window.showLoader(`Uploading staged report ${i + 1} of ${pending.length}...`);
             try {
-                const res = await authorizedPost('sync_defects', { defect: d });
-                if (res && (await res.json()).status === 'success') await db.delete('pending_defects', d.id);
+                const res = await authorizedPost('sync_defects', { defect: pending[i] });
+                if (res && (await res.json()).status === 'success') await db.delete('pending_defects', pending[i].id);
             } catch (e) {}
         }
         isSyncing = false;
-        await refreshConfig(false);
+        await refreshConfig(silent);
         updateSyncUI(navigator.onLine ? 'online' : 'offline');
         checkUnsynced();
     }
 
-    async function refreshConfig(useLoader = true) {
+    async function refreshConfig(silent = true) {
         if (!navigator.onLine) return;
-        if (useLoader) window.showLoader('Fetching project setup from Cloud...');
+        if (!silent) window.showLoader('Syncing with Cloud...');
         try {
             const res = await authorizedPost('get_config', {});
             if (res) {
@@ -308,7 +311,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             }
         } catch (e) {}
-        if (useLoader) window.hideLoader();
+        if (!silent) window.hideLoader();
     }
 
     function updateSyncUI(status) {
@@ -345,32 +348,31 @@ document.addEventListener('DOMContentLoaded', async () => {
     viewGridBtn.onclick = () => { currentView = 'grid'; viewGridBtn.classList.add('success'); viewListBtn.classList.remove('success'); applyFilters(); };
     viewListBtn.onclick = () => { currentView = 'list'; viewListBtn.classList.add('success'); viewGridBtn.classList.remove('success'); applyFilters(); };
     document.getElementById('banner-sync-btn').onclick = async () => {
-        window.showLoader('Uploading reports...');
-        await syncAllPending();
+        window.showLoader('Syncing All Data...');
+        await syncAllPending(false);
         window.hideLoader();
     };
     document.getElementById('sync-btn').onclick = async () => {
         showLoader('Full Cloud Sync & Update Check...');
-        await syncAllPending();
+        await syncAllPending(false);
         await refreshConfig(false);
         await checkAppVersion();
         if ('serviceWorker' in navigator) { const reg = await navigator.serviceWorker.getRegistration(); if (reg) await reg.update(); }
         hideLoader();
     };
 
-    document.getElementById('refresh-admin-table-btn').onclick = () => refreshConfig(true);
+    document.getElementById('refresh-admin-table-btn').onclick = () => refreshConfig(false);
     document.getElementById('force-purge-btn').onclick = async () => {
         if (confirm('Force purge local cache and re-download?')) {
             window.showLoader('Purging local database...');
             localStorage.removeItem('project_config');
-            await refreshConfig(true);
+            await refreshConfig(false);
         }
     };
 
-    window.addEventListener('online', () => { syncAllPending(); refreshConfig(false); checkAppVersion(); });
+    window.addEventListener('online', () => { syncAllPending(true); refreshConfig(true); checkAppVersion(); });
     setInterval(syncAllPending, 15000);
     setInterval(checkAppVersion, 300000);
-    checkAppVersion();
 
     document.getElementById('add-comment-btn').onclick = async () => {
         const msg = document.getElementById('new-comment-input').value.trim();
@@ -383,7 +385,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         delete updated.isSynced;
         await db.put('pending_defects', updated);
         renderTimeline(currentUpdatingDefect, document.getElementById('defect-timeline'));
-        syncAllPending();
+        syncAllPending(true);
         setTimeout(window.hideLoader, 300);
     };
 
@@ -400,7 +402,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         await db.put('pending_defects', updated);
         document.getElementById('detail-modal').style.display = 'none';
         await renderDashboard(false);
-        syncAllPending();
+        syncAllPending(true);
         setTimeout(window.hideLoader, 500);
     };
 
@@ -455,9 +457,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     if (session.role === 'Admin') document.getElementById('admin-btn').style.display = 'block';
-    await renderDashboard(true);
+    
+    // STARTUP FLOW:
+    // 1. Show existing cache immediately
+    await renderDashboard(false);
     await loadAdminSelectors();
     await checkAppVersion();
+    
+    // 2. Perform Sync & Refresh
+    if (navigator.onLine) {
+        window.showLoader('Syncing with Cloud...');
+        const pending = await db.getAll('pending_defects');
+        if (pending.length > 0) window.showLoader('Uploading staged reports...');
+        await syncAllPending(false);
+        await refreshConfig(false);
+    }
+    
+    window.hideLoader();
 });
 
 function compressImage(file, max, qual, cb) {
