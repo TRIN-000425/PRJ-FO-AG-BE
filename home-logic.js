@@ -71,7 +71,7 @@ async function getBase64FromUrl(url) {
 // --- VERSION CHECKER ---
 async function checkAppVersion() {
     const localTag = document.getElementById('local-version-tag');
-    const version = (typeof APP_VERSION !== 'undefined') ? APP_VERSION : (window.APP_VERSION || "1.7.4");
+    const version = (typeof APP_VERSION !== 'undefined') ? APP_VERSION : (window.APP_VERSION || "1.8.0");
     if (localTag) localTag.textContent = 'v' + version;
     if (!navigator.onLine) return;
     try {
@@ -191,6 +191,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         unitFilterSelect.onchange = () => {
             currentUnitFilter = unitFilterSelect.value;
             applyFilters();
+        };
+    }
+
+    const forceUpdateBtn = document.getElementById('force-update-btn');
+    if (forceUpdateBtn) {
+        forceUpdateBtn.onclick = async () => {
+            window.showLoader('Updating App...');
+            if ('serviceWorker' in navigator) {
+                const registrations = await navigator.serviceWorker.getRegistrations();
+                for (const registration of registrations) {
+                    await registration.update();
+                }
+            }
+            window.location.reload(true); // Attempt a cache-busting reload
         };
     }
 

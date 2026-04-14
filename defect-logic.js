@@ -18,7 +18,7 @@ async function initDB() {
 
 async function checkAppVersion() {
     const localTag = document.getElementById('local-version-tag');
-    const version = (typeof APP_VERSION !== 'undefined') ? APP_VERSION : (window.APP_VERSION || "1.7.4");
+    const version = (typeof APP_VERSION !== 'undefined') ? APP_VERSION : (window.APP_VERSION || "1.8.0");
     if (localTag) localTag.textContent = 'v' + version;
 }
 
