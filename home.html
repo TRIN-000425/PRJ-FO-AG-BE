@@ -92,7 +92,10 @@
                 <div class="neu-inset" style="padding: 20px; border-radius: 15px;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                         <h4 style="color: var(--accent-color); margin: 0;">Project Data</h4>
-                        <button id="refresh-admin-table-btn" class="primary" style="width: auto; padding: 5px 12px; font-size: 0.7rem;">Refresh</button>
+                        <div style="display: flex; gap: 8px;">
+                            <button id="refresh-admin-table-btn" class="primary" style="width: auto; padding: 5px 12px; font-size: 0.7rem;">Quick Refresh</button>
+                            <button id="force-purge-btn" class="danger" style="width: auto; padding: 5px 12px; font-size: 0.7rem;" title="Clears local cache and re-downloads everything">Force Purge & Reload</button>
+                        </div>
                     </div>
                     <div style="max-height: 250px; overflow-y: auto;">
                         <table style="width: 100%; border-collapse: collapse; font-size: 0.8rem;">
