@@ -148,11 +148,45 @@ function renderTimeline(defect, container) {
 document.addEventListener('DOMContentLoaded', async () => {
     console.log("Dashboard initializing...");
 
+    const newReportLabel = document.getElementById('new-report-label');
+    const syncLabel = document.getElementById('sync-label');
+    const adminLabel = document.getElementById('admin-label');
+    const logoutLabel = document.getElementById('logout-label');
+
+    // --- IMMEDIATE NAV BINDING ---
+    if (newReportLabel) {
+        newReportLabel.onclick = (e) => {
+            console.log("Nav: New Report");
+            const radio = document.getElementById('new-report-radio');
+            if (radio) radio.checked = true;
+            window.showLoader('Opening Report View...');
+            setTimeout(() => { window.location.href = 'defect.html'; }, 300);
+        };
+    }
+
+    if (logoutLabel) {
+        logoutLabel.onclick = (e) => {
+            console.log("Nav: Logout");
+            const radio = document.getElementById('logout-radio');
+            if (radio) radio.checked = true;
+            window.showLoader('Signing out...');
+            localStorage.clear(); 
+            setTimeout(() => { window.location.href = 'index.html'; }, 500);
+        };
+    }
+
+    // Set local version immediately
+    const localTag = document.getElementById('local-version-tag');
+    const currentVer = (typeof APP_VERSION !== 'undefined') ? APP_VERSION : (window.APP_VERSION || "1.7.4");
+    if (localTag) localTag.textContent = 'v' + currentVer;
+
     try {
         window.showLoader('Initializing Dashboard...');
         
         const session = JSON.parse(localStorage.getItem('user_session'));
         if (!session) { window.location.href = 'index.html'; return; }
+
+        if (session.role === 'Admin' && adminLabel) adminLabel.style.display = 'flex';
 
         const db = await initDB();
         const dashboardContent = document.getElementById('dashboard-content');
@@ -164,10 +198,26 @@ document.addEventListener('DOMContentLoaded', async () => {
         const viewGridBtn = document.getElementById('view-grid-btn');
         const viewListBtn = document.getElementById('view-list-btn');
 
-        const newReportLabel = document.getElementById('new-report-label');
-        const syncLabel = document.getElementById('sync-label');
-        const adminLabel = document.getElementById('admin-label');
-        const logoutLabel = document.getElementById('logout-label');
+        if (syncLabel) {
+            syncLabel.onclick = async () => {
+                console.log("Nav: Sync");
+                const radio = document.getElementById('sync-radio');
+                if (radio) radio.checked = true;
+                showLoader('Full Synchronization in Progress...');
+                await syncAllPending(false);
+                await refreshConfig(false);
+                await checkAppVersion();
+                if ('serviceWorker' in navigator) { const reg = await navigator.serviceWorker.getRegistration(); if (reg) await reg.update(); }
+                hideLoader();
+            };
+        }
+
+        if (adminLabel) {
+            adminLabel.onclick = () => {
+                const radio = document.getElementById('admin-radio');
+                if (radio) radio.checked = true;
+            };
+        }
 
         let masterDefectList = [];
         let projectConfig = { syncedDefects: [], unitNumbers: [], stories: [], unitTypes: [], maps: [] };

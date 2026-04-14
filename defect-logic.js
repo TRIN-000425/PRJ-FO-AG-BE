@@ -41,13 +41,35 @@ async function checkAppVersion() {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-    const menuToggleBtn = document.getElementById('menu-toggle-btn');
-    const navRow = document.getElementById('nav-row');
+    const syncLabel = document.getElementById('sync-label');
+    const backLabel = document.getElementById('back-label');
 
-    // --- EARLY NAV TOGGLE BINDING ---
-    if (menuToggleBtn && navRow) {
-        menuToggleBtn.onclick = () => navRow.classList.toggle('active');
+    // --- IMMEDIATE NAV BINDING ---
+    if (syncLabel) {
+        syncLabel.onclick = async () => {
+            const radio = document.getElementById('sync-radio');
+            if (radio) radio.checked = true;
+            window.showLoader('Synchronizing data with cloud...');
+            await syncAllPending();
+            await checkAppVersion();
+            if ('serviceWorker' in navigator) { const reg = await navigator.serviceWorker.getRegistration(); if (reg) await reg.update(); }
+            window.hideLoader();
+        };
     }
+
+    if (backLabel) {
+        backLabel.onclick = () => {
+            const radio = document.getElementById('back-radio');
+            if (radio) radio.checked = true;
+            window.showLoader('Returning to Dashboard...');
+            setTimeout(() => { window.location.href = 'home.html'; }, 300);
+        };
+    }
+
+    // Set local version immediately
+    const localTag = document.getElementById('local-version-tag');
+    const currentVer = (typeof APP_VERSION !== 'undefined') ? APP_VERSION : (window.APP_VERSION || "1.7.4");
+    if (localTag) localTag.textContent = 'v' + currentVer;
 
     try {
         const session = JSON.parse(localStorage.getItem('user_session'));
@@ -68,8 +90,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         const cancelBtn = document.getElementById('cancel-defect-btn');
         const syncBtn = document.getElementById('sync-btn'); // Fallback if still used elsewhere
         const backBtn = document.getElementById('back-btn'); // Fallback if still used elsewhere
-        const syncLabel = document.getElementById('sync-label');
-        const backLabel = document.getElementById('back-label');
 
         const syncIndicator = document.getElementById('sync-indicator');
 

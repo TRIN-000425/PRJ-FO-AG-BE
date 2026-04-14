@@ -29,17 +29,15 @@
                 <span class="page-title">Dashboard</span>
             </div>
             
-            <div style="display: flex; align-items: center; gap: 8px;">
+            <div style="display: flex; align-items: center; gap: 5px;">
                 <a href="#" onclick="localStorage.clear(); window.location.reload();" style="font-size: 0.6rem; color: var(--error-color); text-decoration: none; font-weight: 600; margin-right: 5px;">Emergency Logout</a>
-                <div id="version-status" class="status-container" style="background: none; padding: 0;">
-                    <span id="local-version-tag" class="version-badge"></span>
-                    <span id="online-version-tag" class="version-badge" style="display: none;"></span>
-                </div>
                 <div id="connection-status" class="status-container status-online" title="Connection Status">
+                    <span id="local-version-tag" style="font-size: 0.6rem; opacity: 0.8; margin-right: 4px; font-weight: 800;"></span>
                     <span id="status-icon">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"></path><path d="M1.42 9a16 16 0 0 1 21.16 0"></path><path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path><line x1="12" y1="20" x2="12.01" y2="20"></line></svg>
                     </span>
                     <span id="status-text" style="font-size: 0.65rem;">Online</span>
+                    <span id="online-version-tag" class="version-badge" style="display: none; margin-left: 5px; background: var(--warning-color); color: white;"></span>
                 </div>
             </div>
         </div>
