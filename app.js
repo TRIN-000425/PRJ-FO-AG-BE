@@ -7,9 +7,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const passwordGroup = document.getElementById('password-group');
     const otpInput = document.getElementById('otp');
     const changeUsernameLink = document.getElementById('change-username-link');
-    const APP_VERSION = "1.7.3";
 
-    // GA_BACKEND_URL is defined in config.js
+    // GA_BACKEND_URL and APP_VERSION are defined in config.js
 
     function getDeviceId() {
         let id = localStorage.getItem('device_id');

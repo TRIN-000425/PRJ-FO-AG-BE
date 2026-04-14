@@ -30,8 +30,9 @@
             </div>
             
             <div style="display: flex; align-items: center; gap: 8px;">
+                <a href="#" onclick="localStorage.clear(); window.location.reload();" style="font-size: 0.6rem; color: var(--error-color); text-decoration: none; font-weight: 600; margin-right: 5px;">Emergency Logout</a>
                 <div id="version-status" class="status-container" style="background: none; padding: 0;">
-                    <span id="local-version-tag" class="version-badge">v1.7.2</span>
+                    <span id="local-version-tag" class="version-badge"></span>
                     <span id="online-version-tag" class="version-badge" style="display: none;"></span>
                 </div>
                 <div id="connection-status" class="status-container status-online" title="Connection Status">
@@ -159,7 +160,5 @@
             });
         }
     </script>
-    <div style="position: fixed; bottom: 10px; right: 15px; font-size: 0.7rem; color: var(--text-muted); opacity: 0.5; z-index: 10000;">v1.7.2</div>
-
 </body>
 </html>
