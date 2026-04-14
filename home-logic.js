@@ -4,6 +4,7 @@ let updatedDonePhotoBase64 = null;
 let isSyncing = false;
 let currentView = 'grid';
 let currentStatusFilter = 'all';
+let currentUnitFilter = 'all';
 
 window.allRenderedDefects = {};
 
@@ -185,6 +186,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         applyFilters();
     };
 
+    const unitFilterSelect = document.getElementById('unit-filter-select');
+    if (unitFilterSelect) {
+        unitFilterSelect.onchange = () => {
+            currentUnitFilter = unitFilterSelect.value;
+            applyFilters();
+        };
+    }
+
     try {
         const session = JSON.parse(localStorage.getItem('user_session'));
         if (!session) { window.location.href = 'index.html'; return; }
@@ -210,7 +219,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         async function refreshConfig(silent = true) {
-            if (!navigator.onLine) { await renderDashboard(false); return; }
+            if (!navigator.onLine) { await renderDashboard(); return; }
             try {
                 const res = await authorizedPost('get_config', {});
                 if (res) {
@@ -218,15 +227,29 @@ document.addEventListener('DOMContentLoaded', async () => {
                     if (result.status === 'success') {
                         localStorage.setItem('project_config', JSON.stringify(result.config));
                         projectConfig = result.config;
-                        await renderDashboard(false);
+                        updateUnitDropdown(projectConfig.unitNumbers);
+                        await renderDashboard();
                     }
                 }
-            } catch (e) { await renderDashboard(false); }
+            } catch (e) { await renderDashboard(); }
+        }
+
+        function updateUnitDropdown(units) {
+            if (!unitFilterSelect || !units) return;
+            const current = unitFilterSelect.value;
+            let html = '<option value="all">All Units</option>';
+            const sortedUnits = [...units].sort((a, b) => a.number.localeCompare(b.number));
+            html += sortedUnits.map(u => `<option value="${u.number}">${u.number}</option>`).join('');
+            unitFilterSelect.innerHTML = html;
+            unitFilterSelect.value = current;
         }
 
         async function renderDashboard() {
             const cached = localStorage.getItem('project_config');
-            if (cached) projectConfig = JSON.parse(cached);
+            if (cached) {
+                projectConfig = JSON.parse(cached);
+                updateUnitDropdown(projectConfig.unitNumbers);
+            }
             const pending = await db.getAll('pending_defects');
             masterDefectList = [
                 ...projectConfig.syncedDefects.map(d => ({ ...d, isSynced: true })),
@@ -245,12 +268,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         function applyFilters() {
             const query = (searchInput.value || '').toLowerCase();
             const filtered = masterDefectList.filter(d => {
-                const matchSearch = (d.unit || '').toLowerCase().includes(query) || (d.description || '').toLowerCase().includes(query);
+                const matchSearch = (d.description || '').toLowerCase().includes(query);
                 const matchStatus = (currentStatusFilter === 'all') || (d.status === currentStatusFilter);
-                return matchSearch && matchStatus;
+                const matchUnit = (currentUnitFilter === 'all') || (d.unit === currentUnitFilter);
+                return matchSearch && matchStatus && matchUnit;
             });
             if (currentView === 'grid') renderGridView(filtered);
-            else renderListView(filtered);
+            else renderMapView(filtered);
         }
 
         function renderGridView(filtered) {
@@ -260,14 +284,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             let html = '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 16px;">';
             html += filtered.map(d => {
                 const photo = d.photo || (d.photoUrl ? fixMapUrl(d.photoUrl) : 'assets/floorplan-placeholder.png');
-                return `<div class="card defect-card" onclick="window.showDefectDetailById('${d.id}')">
-                    <img src="${photo}" class="defect-card-img" style="height: 120px;">
-                    <div class="defect-card-content">
+                return `<div class="card defect-card" onclick="window.showDefectDetailById('${d.id}')" style="padding:0; overflow:hidden;">
+                    <img src="${photo}" class="defect-card-img" style="height: 120px; width:100%; object-fit:cover;">
+                    <div class="defect-card-content" style="padding:10px;">
                         <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:4px;">
                             <span style="font-weight:600; font-size:0.875rem;">${d.unit}</span>
-                            <span class="badge ${d.status}" style="font-size:0.65rem; padding:2px 6px;">${d.status}</span>
+                            <span class="badge ${d.status}" style="font-size:0.6rem; padding:2px 6px;">${d.status}</span>
                         </div>
-                        <p style="font-size:0.75rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${d.description}</p>
+                        <p style="font-size:0.75rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:#666;">${d.description}</p>
                     </div>
                 </div>`;
             }).join('');
@@ -275,17 +299,46 @@ document.addEventListener('DOMContentLoaded', async () => {
             dashboardContent.innerHTML = html;
         }
 
-        function renderListView(filtered) {
+        function renderMapView(filtered) {
             if (!dashboardContent) return;
-            let html = filtered.map(d => `<div class="card" onclick="window.showDefectDetailById('${d.id}')" style="display:flex; align-items:center; gap:12px; padding:12px;">
-                <img src="${d.photo || (d.photoUrl ? fixMapUrl(d.photoUrl) : 'assets/floorplan-placeholder.png')}" style="width:60px; height:60px; border-radius:8px; object-fit:cover;">
-                <div style="flex:1;">
-                    <div style="font-weight:600;">${d.unit} - ${d.story}</div>
-                    <p style="font-size:0.875rem; color:#666;">${d.description}</p>
-                </div>
-                <span class="badge ${d.status}">${d.status}</span>
-            </div>`).join('');
-            dashboardContent.innerHTML = html || '<p style="text-align:center; padding:40px; color:#666;">No defects found.</p>';
+            if (filtered.length === 0) { dashboardContent.innerHTML = '<p style="text-align:center; padding:40px; color:#666;">No defects found.</p>'; return; }
+            
+            const grouped = filtered.reduce((acc, d) => {
+                const key = `${d.unit} - ${d.story}`;
+                if (!acc[key]) acc[key] = [];
+                acc[key].push(d);
+                return acc;
+            }, {});
+
+            let html = '';
+            for (const [title, defects] of Object.entries(grouped)) {
+                const [unitNo, story] = title.split(' - ');
+                const unitMapping = projectConfig.unitNumbers.find(u => u.number === unitNo);
+                const unitType = unitMapping ? unitMapping.type : unitNo;
+                let mapUrl = 'assets/floorplan-placeholder.png';
+                if (projectConfig.maps) {
+                    const m = projectConfig.maps.find(map => map.unit === unitType && map.story === story);
+                    if (m) mapUrl = fixMapUrl(m.mapUrl);
+                }
+
+                html += `<div class="card" style="padding:12px; margin-bottom:24px;">
+                    <h3 style="font-size:1rem; margin-bottom:12px;">${title}</h3>
+                    <div style="position:relative; width:100%; border-radius:8px; overflow:hidden; background:#eee;">
+                        <img src="${mapUrl}" style="width:100%; display:block;">
+                        ${defects.map(d => {
+                            const colors = { Open: '#f9ab00', Onprogress: '#1a73e8', Done: '#188038' };
+                            return `<div onclick="window.showDefectDetailById('${d.id}')" style="position:absolute; left:${d.position.x}%; top:${d.position.y}%; width:16px; height:16px; background:${colors[d.status]||'red'}; border:2px solid #fff; border-radius:50%; transform:translate(-50%,-50%); cursor:pointer; box-shadow:0 2px 4px rgba(0,0,0,0.3);"></div>`;
+                        }).join('')}
+                    </div>
+                    <div style="margin-top:12px;">
+                        ${defects.map(d => `<div onclick="window.showDefectDetailById('${d.id}')" style="font-size:0.875rem; padding:8px 0; border-top:1px solid #eee; display:flex; align-items:center; justify-content:space-between;">
+                            <span style="color:#333;">${d.description}</span>
+                            <span class="badge ${d.status}" style="font-size:0.65rem; padding:2px 8px;">${d.status}</span>
+                        </div>`).join('')}
+                    </div>
+                </div>`;
+            }
+            dashboardContent.innerHTML = html;
         }
 
         async function authorizedPost(action, payload) {

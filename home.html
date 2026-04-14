@@ -28,13 +28,20 @@
 
         <!-- Main Dashboard Content -->
         <main class="main-content">
-            <!-- Search & Filter Pills -->
-            <div class="card" style="padding: 12px;">
-                <div class="input-group" style="margin-bottom: 12px;">
-                    <input type="text" id="search-input" placeholder="Search Unit or Description...">
+            <!-- Search & Filter Card -->
+            <div class="card" style="padding: 16px;">
+                <div style="display: flex; gap: 12px; margin-bottom: 12px;">
+                    <div style="flex: 1.5;">
+                        <input type="text" id="search-input" placeholder="Search Description...">
+                    </div>
+                    <div style="flex: 1;">
+                        <select id="unit-filter-select">
+                            <option value="all">All Units</option>
+                        </select>
+                    </div>
                 </div>
                 <div class="filter-pills" id="status-filter-pills">
-                    <div class="pill active" data-status="all">All</div>
+                    <div class="pill active" data-status="all">All Status</div>
                     <div class="pill" data-status="Open">Open</div>
                     <div class="pill" data-status="Onprogress">In Progress</div>
                     <div class="pill" data-status="Done">Done</div>
@@ -43,8 +50,8 @@
 
             <!-- View Toggle -->
             <div style="display: flex; gap: 12px; margin-bottom: 16px;">
-                <button id="view-grid-btn" class="primary" style="flex: 1; height: 40px; padding: 0;">Grid View</button>
-                <button id="view-list-btn" class="outline" style="flex: 1; height: 40px; padding: 0;">List View</button>
+                <button id="view-grid-btn" class="primary" style="flex: 1; height: 40px; padding: 0;">Grid</button>
+                <button id="view-list-btn" class="outline" style="flex: 1; height: 40px; padding: 0;">Map View</button>
             </div>
 
             <!-- Unsynced Banner -->
