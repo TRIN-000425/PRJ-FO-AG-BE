@@ -3,7 +3,7 @@ let currentUpdatingDefect = null;
 let updatedDonePhotoBase64 = null;
 let isSyncing = false;
 let currentView = 'grid';
-const APP_VERSION = "1.7.2";
+const APP_VERSION = "1.7.3";
 
 window.allRenderedDefects = {};
 
@@ -189,18 +189,24 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     async function renderDashboard(useLoader = false) {
         if (useLoader) window.showLoader('Updating View...');
-        const cached = localStorage.getItem('project_config');
-        if (cached) projectConfig = JSON.parse(cached);
-        const pending = await db.getAll('pending_defects');
-        masterDefectList = [
-            ...projectConfig.syncedDefects.map(d => ({ ...d, isSynced: true, history: d.history || [] })),
-            ...pending.map(d => ({ ...d, isSynced: false, history: d.history || [] }))
-        ];
-        window.allRenderedDefects = {};
-        masterDefectList.forEach(d => { window.allRenderedDefects[d.id] = d; });
-        applyFilters();
-        checkUnsynced();
-        if (useLoader) window.hideLoader();
+        try {
+            const cached = localStorage.getItem('project_config');
+            if (cached) projectConfig = JSON.parse(cached);
+            const pending = await db.getAll('pending_defects');
+            masterDefectList = [
+                ...projectConfig.syncedDefects.map(d => ({ ...d, isSynced: true, history: d.history || [] })),
+                ...pending.map(d => ({ ...d, isSynced: false, history: d.history || [] }))
+            ];
+            window.allRenderedDefects = {};
+            masterDefectList.forEach(d => { window.allRenderedDefects[d.id] = d; });
+            applyFilters();
+            await checkUnsynced();
+        } catch (e) {
+            console.error("Dashboard error:", e);
+            if (dashboardContent) dashboardContent.innerHTML = `<div class="neu-raised" style="padding:30px;color:red;text-align:center;">Error loading dashboard: ${e.message}</div>`;
+        } finally {
+            if (useLoader) window.hideLoader();
+        }
     }
 
     function applyFilters() {
@@ -216,6 +222,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function renderGridView(filtered) {
+        if (!dashboardContent) return;
         if (filtered.length === 0) { 
             dashboardContent.innerHTML = '<div style="text-align:center;padding:50px;"><p class="neu-inset" style="padding:20px;display:inline-block;">No defects found matching your criteria.</p></div>'; 
             return; 
@@ -240,6 +247,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function renderListView(filtered) {
+        if (!dashboardContent) return;
         if (filtered.length === 0) { 
             dashboardContent.innerHTML = '<div style="text-align:center;padding:50px;"><p class="neu-inset" style="padding:20px;display:inline-block;">No defects found matching your criteria.</p></div>'; 
             return; 
@@ -290,7 +298,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (pending.length === 0) { updateSyncUI('online'); return; }
         isSyncing = true; updateSyncUI('syncing');
         for (let i = 0; i < pending.length; i++) {
-            if (!silent) window.showLoader(`Syncing staged reports (${i + 1}/${pending.length})...`);
+            if (!silent) window.showLoader(`Uploading staged report ${i + 1} of ${pending.length}...`);
             try {
                 const res = await authorizedPost('sync_defects', { defect: pending[i] });
                 if (res && (await res.json()).status === 'success') await db.delete('pending_defects', pending[i].id);
@@ -299,12 +307,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         isSyncing = false;
         await refreshConfig(silent);
         updateSyncUI(navigator.onLine ? 'online' : 'offline');
-        checkUnsynced();
+        await checkUnsynced();
     }
 
     async function refreshConfig(silent = true) {
         if (!navigator.onLine) return;
-        if (!silent) window.showLoader('Fetching Cloud Setup...');
+        if (!silent) window.showLoader('Syncing with Cloud...');
         try {
             const res = await authorizedPost('get_config', {});
             if (res) {
@@ -468,17 +476,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     // STARTUP FLOW:
     // 1. Show existing cache immediately
-    await renderDashboard(false);
-    await loadAdminSelectors();
-    await checkAppVersion();
+    try {
+        await renderDashboard(false);
+        await loadAdminSelectors();
+        await checkAppVersion();
+    } catch (e) { console.error("Initial load error:", e); }
     
     // 2. Perform Sync & Refresh
     if (navigator.onLine) {
-        window.showLoader('Verifying Cloud Data...');
-        const pending = await db.getAll('pending_defects');
-        if (pending.length > 0) window.showLoader('Pushing local updates...');
-        await syncAllPending(true);
-        await refreshConfig(true);
+        try {
+            window.showLoader('Verifying Cloud Data...');
+            const pending = await db.getAll('pending_defects');
+            if (pending.length > 0) window.showLoader('Pushing local updates...');
+            await syncAllPending(true);
+            await refreshConfig(true);
+        } catch (e) { console.error("Cloud sync error:", e); }
     }
     
     setTimeout(window.hideLoader, 800);

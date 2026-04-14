@@ -2,7 +2,7 @@ let compressedPhotoData = null;
 let projectConfig = { unitTypes: [], stories: [], unitNumbers: [], maps: [], syncedDefects: [] };
 let dbPromise = null;
 let isSyncing = false;
-const APP_VERSION = "1.7.1";
+const APP_VERSION = "1.7.3";
 
 // Initialize IndexedDB
 async function initDB() {
