@@ -7,10 +7,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const passwordGroup = document.getElementById('password-group');
     const otpInput = document.getElementById('otp');
     const changeUsernameLink = document.getElementById('change-username-link');
-    const APP_VERSION = "1.6.3";
+    const APP_VERSION = "1.6.4";
 
     // GA_BACKEND_URL is defined in config.js
 
+    // --- DEVICE ID LOGIC ---
+    function getDeviceId() {
+        let id = localStorage.getItem('device_id');
+        if (!id) {
+            id = 'dev-' + Math.random().toString(36).substr(2, 9);
+            localStorage.setItem('device_id', id);
+        }
+        return id;
+    }
 
     // Version Check
     async function checkAppVersion() {
@@ -20,7 +29,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await res.json();
             if (data.version && data.version !== APP_VERSION) {
                 console.log("New version available:", data.version);
-                // In login page, we can just reload automatically if no user is active
                 if (!localStorage.getItem('user_session')) window.location.reload();
             }
         } catch (e) {}
@@ -39,10 +47,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const username = document.getElementById('username').value.trim();
         const password = document.getElementById('password').value;
         const otp = otpInput.value.trim();
+        const deviceId = getDeviceId();
 
         showLoader('Authenticating...');
         try {
-            const payload = { action: 'login', username, password, otp };
+            const payload = { action: 'login', username, password, otp, deviceId };
             const res = await fetch(GA_BACKEND_URL, {
                 method: 'POST',
                 mode: 'cors',
@@ -58,7 +67,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 passwordGroup.style.display = 'none';
                 otpGroup.style.display = 'block';
                 document.getElementById('username').readOnly = true;
-                showMessage('Device not recognized. Please enter OTP from Admin.', 'info');
+                showMessage(`Device not recognized. Device ID: ${deviceId}. Please enter OTP from Admin.`, 'info');
             } else if (result.status === 'success') {
                 localStorage.setItem('user_session', JSON.stringify(result.session));
                 window.location.href = 'home.html';
@@ -81,9 +90,15 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     function showLoader(text) {
+        document.getElementById('global-loader').textContent = text; // Simpler for now
+        document.getElementById('global-loader').style.display = 'flex';
+    }
+    // Correcting showLoader to use the existing structure
+    function showLoader(text) {
         document.getElementById('loader-text').textContent = text;
         document.getElementById('global-loader').style.display = 'flex';
     }
+
     function hideLoader() {
         document.getElementById('global-loader').style.display = 'none';
     }
