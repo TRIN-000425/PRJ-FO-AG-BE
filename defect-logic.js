@@ -1,5 +1,5 @@
 let compressedPhotoData = null;
-let projectConfig = { unitTypes: [], stories: [] };
+let projectConfig = { unitTypes: [], stories: [], unitNumbers: [], maps: [], syncedDefects: [] };
 let dbPromise = null;
 let isSyncing = false;
 
@@ -45,14 +45,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     const confirmPinBtn = document.getElementById('confirm-pin-btn');
     const activeCrosshair = document.getElementById('active-crosshair');
 
-    // Global Loader helpers
     window.showLoader = (text = 'Loading...') => {
         const loader = document.getElementById('global-loader');
         const loaderText = document.getElementById('loader-text');
-        if (loader) {
-            if (loaderText) loaderText.textContent = text;
-            loader.style.display = 'flex';
-        }
+        if (loader) { if (loaderText) loaderText.textContent = text; loader.style.display = 'flex'; }
     };
     window.hideLoader = () => {
         const loader = document.getElementById('global-loader');
@@ -61,217 +57,144 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     backBtn.onclick = () => window.location.href = 'home.html';
 
-    // --- targeting logic ---
     let activePinContext = null;
 
     mapContainer.onclick = (e) => {
-        if (modal.style.display === 'block') return;
-        // Check if the click target is the container, the floorplan, or the crosshair itself
+        if (modal.style.display === 'block' || detailModal.style.display === 'block') return;
         if (e.target !== mapContainer && e.target !== floorplanImg && e.target !== activeCrosshair) return;
-
         const rect = mapContainer.getBoundingClientRect();
         const x = ((e.clientX - rect.left) / rect.width) * 100;
         const y = ((e.clientY - rect.top) / rect.height) * 100;
-
-        activePinContext = {
-            unit: unitSelect.value,
-            story: storySelect.value,
-            position: { x, y }
-        };
-
-        // Position crosshair
+        activePinContext = { unit: unitSelect.value, story: storySelect.value, position: { x, y } };
         activeCrosshair.style.left = x + '%';
         activeCrosshair.style.top = y + '%';
         activeCrosshair.style.display = 'block';
-
-        // Show confirm button
         confirmPinBtn.style.display = 'block';
     };
 
-    confirmPinBtn.onclick = () => {
-        modal.style.display = 'block';
-        confirmPinBtn.style.display = 'none';
-    };
+    confirmPinBtn.onclick = () => { modal.style.display = 'block'; confirmPinBtn.style.display = 'none'; };
 
-    // --- AUTO-SYNC LOGIC ---
+    // --- SYNC & STATUS ---
     function updateSyncUI(status) {
         if (!syncIndicator) return;
-        if (status === 'syncing') {
-            syncIndicator.style.background = '#1877f2';
-            syncIndicator.style.boxShadow = '0 0 10px #1877f2';
-        } else if (status === 'online') {
-            syncIndicator.style.background = '#1a7f37';
-            syncIndicator.style.boxShadow = 'none';
-        } else {
-            syncIndicator.style.background = '#cf222e';
-            syncIndicator.style.boxShadow = 'none';
-        }
+        const colors = { syncing: '#1877f2', online: '#1a7f37', offline: '#cf222e' };
+        syncIndicator.style.background = colors[status] || '#ccc';
+        syncIndicator.title = status.charAt(0).toUpperCase() + status.slice(1);
     }
 
     async function syncAllPending() {
-        if (isSyncing || !navigator.onLine) return;
+        if (isSyncing || !navigator.onLine) {
+            updateSyncUI(navigator.onLine ? 'online' : 'offline');
+            return;
+        }
         const pending = await db.getAll('pending_defects');
         if (pending.length === 0) { updateSyncUI('online'); return; }
-
-        isSyncing = true;
-        updateSyncUI('syncing');
-        let successCount = 0;
+        isSyncing = true; updateSyncUI('syncing');
         for (const d of pending) {
             try {
                 const res = await authorizedPost('sync_defects', { defect: d });
-                if (res && (await res.json()).status === 'success') {
-                    await db.delete('pending_defects', d.id);
-                    successCount++;
-                }
-            } catch (e) { console.warn('Background sync failed'); }
+                if (res && (await res.json()).status === 'success') await db.delete('pending_defects', d.id);
+            } catch (e) {}
         }
         isSyncing = false;
-        if (successCount > 0) { await loadProjectConfig(); }
+        await loadProjectConfig();
         updateSyncUI(navigator.onLine ? 'online' : 'offline');
     }
 
-    window.addEventListener('online', syncAllPending);
-    setInterval(syncAllPending, 30000);
+    window.addEventListener('online', () => { syncAllPending(); loadProjectConfig(); });
+    setInterval(syncAllPending, 15000);
     syncAllPending();
 
     syncBtn.onclick = async () => {
-        if (!navigator.onLine) return alert('Offline');
-        showLoader('Syncing data & checking for app updates...');
-        try {
-            await syncAllPending();
-            
-            // Check for latest version on GitHub Pages
-            if ('serviceWorker' in navigator) {
-                const registration = await navigator.serviceWorker.getRegistration();
-                if (registration) {
-                    await registration.update();
-                    console.log('App update check triggered');
-                }
-            }
-
-            alert('Sync complete. Data saved and checked for updates.');
-        } catch (e) {
-            alert('Sync failed: ' + e.toString());
-        } finally {
-            hideLoader();
-        }
+        showLoader('Full Sync...');
+        await syncAllPending();
+        if ('serviceWorker' in navigator) { const reg = await navigator.serviceWorker.getRegistration(); if (reg) await reg.update(); }
+        hideLoader();
     };
 
-    // --- RENDER & LOGIC ---
-    await loadProjectConfig();
-
+    // --- CONFIG & RENDER ---
     async function loadProjectConfig() {
-        showLoader('Loading project configuration...');
         const cached = localStorage.getItem('project_config');
         if (cached) { projectConfig = JSON.parse(cached); renderSelectors(projectConfig); }
-
-        if (typeof GA_BACKEND_URL !== 'undefined' && GA_BACKEND_URL !== 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE') {
+        if (navigator.onLine) {
             try {
                 const res = await authorizedPost('get_config', {});
-                if (!res) { hideLoader(); return; }
-                const result = await res.json();
-                if (result.status === 'success') {
-                    projectConfig = result.config;
-                    localStorage.setItem('project_config', JSON.stringify(projectConfig));
-                    renderSelectors(projectConfig);
+                if (res) {
+                    const result = await res.json();
+                    if (result.status === 'success') {
+                        projectConfig = result.config;
+                        localStorage.setItem('project_config', JSON.stringify(projectConfig));
+                        renderSelectors(projectConfig);
+                    }
                 }
-            } catch (err) { console.warn('Offline: Using cache'); }
+            } catch (err) {}
         }
-        hideLoader();
-    }
-
-    function sanitizeHTML(str) {
-        const div = document.createElement('div');
-        div.textContent = str;
-        return div.innerHTML;
     }
 
     function renderSelectors(config) {
         const prevUnit = unitSelect.value;
         const prevStory = storySelect.value;
         if (config.unitNumbers) {
-            unitSelect.innerHTML = config.unitNumbers.map(u => `<option value="${sanitizeHTML(u.number)}">${sanitizeHTML(u.number)} (${sanitizeHTML(u.type)})</option>`).join('');
+            unitSelect.innerHTML = config.unitNumbers.map(u => `<option value="${u.number}">${u.number} (${u.type})</option>`).join('');
         }
         if (config.stories) {
-            storySelect.innerHTML = config.stories.map(s => `<option value="${sanitizeHTML(s.value)}">${sanitizeHTML(s.label)}</option>`).join('');
+            storySelect.innerHTML = config.stories.map(s => `<option value="${s.value}">${s.label}</option>`).join('');
         }
-        if (Array.from(unitSelect.options).some(o => o.value === prevUnit)) unitSelect.value = prevUnit;
-        if (Array.from(storySelect.options).some(o => o.value === prevStory)) storySelect.value = prevStory;
+        if (prevUnit && Array.from(unitSelect.options).some(o => o.value === prevUnit)) unitSelect.value = prevUnit;
+        if (prevStory && Array.from(storySelect.options).some(o => o.value === prevStory)) storySelect.value = prevStory;
         updateSelection();
     }
 
     async function updateSelection() {
         const unitNumber = unitSelect.value.trim();
         const story = storySelect.value.trim();
-        
-        // Find mapped unit type
-        const unitMapping = projectConfig.unitNumbers ? projectConfig.unitNumbers.find(u => u.number === unitNumber) : null;
+        const unitMapping = projectConfig.unitNumbers.find(u => u.number === unitNumber);
         const unitType = unitMapping ? unitMapping.type : unitNumber;
-
         unitDisplay.textContent = unitNumber;
         floorDisplay.textContent = story;
         pinsContainer.innerHTML = '';
-        let customMapUrl = null;
-
+        let mapUrl = null;
         if (projectConfig.maps) {
-            // Use unitType for map lookup
-            const currentMap = projectConfig.maps.find(m => 
-                (m.unit || '').toString().trim().toLowerCase() === unitType.toLowerCase() && 
-                (m.story || '').toString().trim().toLowerCase() === story.toLowerCase()
-            );
-            if (currentMap && currentMap.mapUrl) {
-                customMapUrl = fixMapUrl(currentMap.mapUrl);
-            }
+            const currentMap = projectConfig.maps.find(m => m.unit === unitType && m.story === story);
+            if (currentMap) mapUrl = fixMapUrl(currentMap.mapUrl);
         }
-        
-        const finalUrl = customMapUrl || `assets/${unitType}_${story}.png`;
-        if (floorplanImg.src !== finalUrl) {
-            floorplanImg.src = finalUrl;
-        }
-
-        floorplanImg.onerror = () => { 
-            // Only fall back if we haven't already fallen back to the placeholder
-            if (!floorplanImg.src.includes('placeholder')) {
-                console.warn('Map load failed, using placeholder');
-                floorplanImg.src = 'assets/floorplan-placeholder.png'; 
-            }
-        };
+        floorplanImg.src = mapUrl || `assets/${unitType}_${story}.png`;
+        floorplanImg.onerror = () => { if (!floorplanImg.src.includes('placeholder')) floorplanImg.src = 'assets/floorplan-placeholder.png'; };
         
         if (projectConfig.syncedDefects) {
             projectConfig.syncedDefects.forEach(d => {
-                const dUnit = (d.unit || '').toString().trim();
-                const dStory = (d.story || '').toString().trim();
-                if (dUnit === unitNumber && dStory === story) addPinToUI(d, 'synced');
+                if (d.unit === unitNumber && d.story === story) addPinToUI(d, 'synced');
             });
         }
         const pending = await db.getAll('pending_defects');
         pending.forEach(d => {
-            const dUnit = (d.unit || '').toString().trim();
-            const dStory = (d.story || '').toString().trim();
-            if (dUnit === unitNumber && dStory === story) addPinToUI(d, 'pending');
+            if (d.unit === unitNumber && d.story === story) addPinToUI(d, 'pending');
         });
+    }
+
+    function addPinToUI(defect, type) {
+        if (!defect || !defect.position) return;
+        const pin = document.createElement('div');
+        pin.className = 'pin';
+        pin.style.left = defect.position.x + '%'; 
+        pin.style.top = defect.position.y + '%';
+        pin.style.width = '18px'; pin.style.height = '18px'; pin.style.border = '2px solid white'; pin.style.position = 'absolute'; pin.style.borderRadius = '50%'; pin.style.transform = 'translate(-50%, -50%)';
+        const colors = { Open: '#d29922', Onprogress: '#1877f2', Done: '#1a7f37' };
+        pin.style.backgroundColor = colors[defect.status] || 'red';
+        if (type === 'pending') pin.style.boxShadow = '0 0 10px #cf222e';
+        pin.onclick = (e) => { e.stopPropagation(); showDetail(defect, type); };
+        pinsContainer.appendChild(pin);
     }
 
     function fixMapUrl(url) {
         if (!url) return url;
         const trimmed = url.trim();
         if (trimmed.includes('drive.google.com') || trimmed.includes('googledrive.com')) {
-            const match = trimmed.match(/\/d\/([^/?]+)/) || 
-                          trimmed.match(/id=([^&?]+)/);
-            if (match && match[1]) {
-                return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w1600`;
-            }
-            const idMatch = trimmed.split('id=')[1] || trimmed.split('/d/')[1];
-            if (idMatch) {
-                const cleanId = idMatch.split(/[&?]/)[0];
-                return `https://drive.google.com/thumbnail?id=${cleanId}&sz=w1600`;
-            }
+            const match = trimmed.match(/\/d\/([^/?]+)/) || trimmed.match(/id=([^&?]+)/);
+            if (match && match[1]) return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w1600`;
         }
         return trimmed;
     }
-
-    unitSelect.onchange = updateSelection;
-    storySelect.onchange = updateSelection;
 
     function showDetail(defect, type) {
         detailStatus.textContent = defect.status || 'Open';
@@ -282,32 +205,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         detailModal.style.display = 'block';
     }
 
-    closeDetailBtn.onclick = () => detailModal.style.display = 'none';
-
-    async function authorizedPost(action, payload) {
-        try {
-            const res = await fetch(GA_BACKEND_URL, {
-                method: 'POST', 
-                mode: 'cors',
-                headers: { 'Content-Type': 'text/plain' }, // Critical GAS workaround
-                body: JSON.stringify({
-                    action,
-                    auth: { username: session.username, deviceId: session.deviceId, deviceToken: session.deviceToken },
-                    ...payload
-                })
-            });
-            if (res.status === 401) { 
-                localStorage.removeItem('user_session'); 
-                window.location.href = 'index.html'; 
-                return null; 
-            }
-            return res;
-        } catch (err) {
-            console.error('API Post failed:', err);
-            return null;
-        }
-    }
-
     photoInput.onchange = (e) => {
         const file = e.target.files[0];
         if (file) {
@@ -315,8 +212,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('compressing-msg').style.display = 'block';
             compressImage(file, 1024, 0.7, (base) => {
                 compressedPhotoData = base;
-                previewImg.src = base; 
-                previewImg.style.display = 'block';
+                previewImg.src = base; previewImg.style.display = 'block';
                 saveBtn.disabled = false;
                 document.getElementById('compressing-msg').style.display = 'none';
             });
@@ -328,31 +224,33 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!desc || !compressedPhotoData) return alert('Missing info');
         const defect = { 
             id: 'def-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5),
-            description: desc, 
-            photo: compressedPhotoData, 
-            position: activePinContext.position, 
-            timestamp: new Date().toISOString(),
-            unit: activePinContext.unit,
-            story: activePinContext.story,
-            status: 'Open'
+            description: desc, photo: compressedPhotoData, position: activePinContext.position, 
+            timestamp: new Date().toISOString(), unit: activePinContext.unit, story: activePinContext.story, status: 'Open', history: []
         };
         await db.put('pending_defects', defect);
-        if (unitSelect.value === defect.unit && storySelect.value === defect.story) addPinToUI(defect, 'pending');
+        updateSelection();
         closeModal();
-        syncAllPending(); // Trigger auto-sync
+        syncAllPending(); // Immediate sync attempt
     };
 
+    unitSelect.onchange = updateSelection;
+    storySelect.onchange = updateSelection;
+    closeDetailBtn.onclick = () => detailModal.style.display = 'none';
     cancelBtn.onclick = closeModal;
-    function closeModal() { 
-        modal.style.display = 'none'; 
-        document.getElementById('defect-desc').value = ''; 
-        previewImg.style.display = 'none'; 
-        compressedPhotoData = null; 
-        photoInput.value = '';
-        activePinContext = null;
-        if (activeCrosshair) activeCrosshair.style.display = 'none';
-        if (confirmPinBtn) confirmPinBtn.style.display = 'none';
+    function closeModal() { modal.style.display = 'none'; document.getElementById('defect-desc').value = ''; previewImg.style.display = 'none'; compressedPhotoData = null; photoInput.value = ''; activePinContext = null; activeCrosshair.style.display = 'none'; confirmPinBtn.style.display = 'none'; }
+
+    async function authorizedPost(action, payload) {
+        try {
+            const res = await fetch(GA_BACKEND_URL, {
+                method: 'POST', mode: 'cors', headers: { 'Content-Type': 'text/plain' },
+                body: JSON.stringify({ action, auth: { username: session.username, deviceId: session.deviceId, deviceToken: session.deviceToken }, ...payload })
+            });
+            if (res.status === 401) { localStorage.clear(); window.location.href = 'index.html'; return null; }
+            return res;
+        } catch (err) { return null; }
     }
+
+    await loadProjectConfig();
 });
 
 function compressImage(file, max, qual, cb) {
