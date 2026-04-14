@@ -3,7 +3,7 @@ let currentUpdatingDefect = null;
 let updatedDonePhotoBase64 = null;
 let isSyncing = false;
 let currentView = 'grid';
-const APP_VERSION = "1.6.1.c";
+const APP_VERSION = "1.6.2";
 
 window.allRenderedDefects = {};
 
@@ -88,9 +88,8 @@ async function checkAppVersion() {
         if (data.version && data.version !== APP_VERSION) {
             const banner = document.getElementById('update-banner');
             if (banner) banner.style.display = 'block';
-            console.log("New version detected:", data.version);
         }
-    } catch (e) { console.warn("Version check failed", e); }
+    } catch (e) {}
 }
 
 // --- GLOBAL MODAL ACCESS ---
@@ -106,9 +105,18 @@ window.showDefectDetailById = (id) => {
     img.src = mainPhoto;
     img.style.display = mainPhoto ? 'block' : 'none';
     document.getElementById('update-status-select').value = defect.status || 'Open';
-    document.getElementById('done-photo-group').style.display = (defect.status === 'Done' || document.getElementById('update-status-select').value === 'Done') ? 'block' : 'none';
+    document.getElementById('done-photo-group').style.display = (document.getElementById('update-status-select').value === 'Done') ? 'block' : 'none';
     renderTimeline(defect, document.getElementById('defect-timeline'));
     document.getElementById('detail-modal').style.display = 'block';
+};
+
+// --- PIN HIGHLIGHT HELPERS ---
+window.highlightPin = (id, active) => {
+    const pin = document.getElementById(`pin-${id}`);
+    if (pin) {
+        if (active) pin.classList.add('pin-highlight');
+        else pin.classList.remove('pin-highlight');
+    }
 };
 
 function renderTimeline(defect, container) {
@@ -220,12 +228,18 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <div style="display:grid;grid-template-columns:1fr 1.5fr;gap:20px;">
                         <div style="position:relative;border-radius:10px;overflow:hidden;background:#fff;" class="neu-inset">
                             <img src="${mapUrl}" style="width:100%;display:block;" onerror="this.src='assets/floorplan-placeholder.png'">
-                            ${sDefects.map(d => `<div class="pin" style="left:${d.position.x}%;top:${d.position.y}%;background:${d.status==='Done'?'#1a7f37':(d.status==='Onprogress'?'#1877f2':'#d29922')};width:12px;height:12px;border:2px solid #fff;position:absolute;border-radius:50%;transform:translate(-50%,-50%);cursor:pointer;" onclick="window.showDefectDetailById('${d.id}')"></div>`).join('')}
+                            ${sDefects.map(d => `<div id="pin-${d.id}" class="pin" style="left:${d.position.x}%;top:${d.position.y}%;background:${d.status==='Done'?'#1a7f37':(d.status==='Onprogress'?'#1877f2':'#d29922')};width:12px;height:12px;border:2px solid #fff;position:absolute;border-radius:50%;transform:translate(-50%,-50%);cursor:pointer;" onclick="window.showDefectDetailById('${d.id}')"></div>`).join('')}
                         </div>
                         <div class="neu-inset" style="padding:10px;border-radius:10px;overflow-x:auto;">
                             <table style="width:100%;font-size:0.8rem;border-collapse:collapse;">
-                                <thead><tr style="text-align:left;border-bottom:1px solid #ccc;"><th>Status</th><th>Desc</th><th>Action</th></tr></thead>
-                                <tbody>${sDefects.map(d => `<tr style="border-bottom:1px solid #eee;"><td>${d.status}</td><td>${d.description}</td><td><button class="primary" style="width:auto;padding:2px 8px;font-size:0.7rem;" onclick="window.showDefectDetailById('${d.id}')">Details</button></td></tr>`).join('')}</tbody>
+                                <thead><tr style="text-align:left;border-bottom:1px solid #ccc;"><th style="padding:10px;">Status</th><th style="padding:10px;">Desc</th><th style="padding:10px;">Action</th></tr></thead>
+                                <tbody>${sDefects.map(d => `
+                                    <tr style="border-bottom:1px solid #eee; transition: background 0.2s;" onmouseenter="window.highlightPin('${d.id}', true)" onmouseleave="window.highlightPin('${d.id}', false)">
+                                        <td style="padding:10px;"><span class="badge ${d.status}" style="position:static; padding:2px 8px; font-size:0.6rem;">${d.status}</span></td>
+                                        <td style="padding:10px;">${d.description}</td>
+                                        <td style="padding:10px;"><button class="primary" style="width:auto;padding:2px 8px;font-size:0.7rem;" onclick="window.showDefectDetailById('${d.id}')">Details</button></td>
+                                    </tr>`).join('')}
+                                </tbody>
                             </table>
                         </div>
                     </div></div>`;
@@ -241,21 +255,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // --- SYNC & REFRESH ---
     async function syncAllPending() {
-        if (isSyncing || !navigator.onLine) {
-            updateSyncUI(navigator.onLine ? 'online' : 'offline');
-            return;
-        }
+        if (isSyncing || !navigator.onLine) { updateSyncUI(navigator.onLine ? 'online' : 'offline'); return; }
         const pending = await db.getAll('pending_defects');
         if (pending.length === 0) { updateSyncUI('online'); return; }
         isSyncing = true; updateSyncUI('syncing');
-        for (let i = 0; i < pending.length; i++) {
+        for (const d of pending) {
             try {
-                const res = await authorizedPost('sync_defects', { defect: pending[i] });
-                if (res && (await res.json()).status === 'success') await db.delete('pending_defects', pending[i].id);
+                const res = await authorizedPost('sync_defects', { defect: d });
+                if (res && (await res.json()).status === 'success') await db.delete('pending_defects', d.id);
             } catch (e) {}
         }
         isSyncing = false;
-        if (success > 0) await refreshConfig();
+        await refreshConfig();
         updateSyncUI(navigator.onLine ? 'online' : 'offline');
         checkUnsynced();
     }
@@ -282,18 +293,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         syncIndicator.style.background = colors[status] || '#ccc';
     }
 
-    // Bindings
     searchInput.oninput = applyFilters;
     filterStatus.onchange = applyFilters;
     document.getElementById('reset-filter-btn').onclick = () => { searchInput.value = ''; filterStatus.value = 'all'; applyFilters(); };
     viewGridBtn.onclick = () => { currentView = 'grid'; viewGridBtn.classList.add('success'); viewListBtn.classList.remove('success'); applyFilters(); };
     viewListBtn.onclick = () => { currentView = 'list'; viewListBtn.classList.add('success'); viewGridBtn.classList.remove('success'); applyFilters(); };
-    
-    document.getElementById('banner-sync-btn').onclick = () => {
-        showLoader('Syncing...');
-        syncAllPending().then(() => hideLoader());
-    };
-
+    document.getElementById('banner-sync-btn').onclick = syncAllPending;
     document.getElementById('sync-btn').onclick = async () => {
         showLoader('Syncing All...');
         await syncAllPending();
@@ -308,20 +313,22 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (confirm('Force purge cache?')) { localStorage.removeItem('project_config'); await refreshConfig(); }
     };
 
-    // Intervals & Version Check
     window.addEventListener('online', () => { syncAllPending(); refreshConfig(); checkAppVersion(); });
     setInterval(syncAllPending, 15000);
-    setInterval(checkAppVersion, 300000); // 5 mins
+    setInterval(checkAppVersion, 300000);
     checkAppVersion();
 
-    // Modal/Update Actions
-    document.getElementById('add-comment-btn').onclick = () => {
+    document.getElementById('add-comment-btn').onclick = async () => {
         const msg = document.getElementById('new-comment-input').value.trim();
         if (!msg || !currentUpdatingDefect) return;
         if (!currentUpdatingDefect.history) currentUpdatingDefect.history = [];
         currentUpdatingDefect.history.push({ time: new Date().toISOString(), msg: `Note: ${msg}` });
         document.getElementById('new-comment-input').value = '';
+        const updated = { ...currentUpdatingDefect };
+        delete updated.isSynced;
+        await db.put('pending_defects', updated);
         renderTimeline(currentUpdatingDefect, document.getElementById('defect-timeline'));
+        syncAllPending();
     };
 
     document.getElementById('save-update-btn').onclick = async () => {
