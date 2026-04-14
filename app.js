@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const passwordGroup = document.getElementById('password-group');
     const otpInput = document.getElementById('otp');
     const changeUsernameLink = document.getElementById('change-username-link');
-    const APP_VERSION = "1.6.6";
+    const APP_VERSION = "1.6.7";
 
     // GA_BACKEND_URL is defined in config.js
 
@@ -38,7 +38,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Check existing session
     const session = JSON.parse(localStorage.getItem('user_session'));
-    if (session) { window.location.href = 'home.html'; return; }
+    if (session) { 
+        showLoader('Welcome back! Redirecting...');
+        setTimeout(() => { window.location.href = 'home.html'; }, 500);
+        return; 
+    }
 
     let currentUsername = "";
 
@@ -49,7 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const otp = otpInput.value.trim();
         const deviceId = getDeviceId();
 
-        showLoader('Authenticating...');
+        showLoader('Authenticating with Cloud...');
         try {
             const payload = { action: 'login', username, password, otp, deviceId };
             const res = await fetch(GA_BACKEND_URL, {
@@ -69,8 +73,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('username').readOnly = true;
                 showMessage(`Device not recognized. Device ID: ${deviceId}. Please enter OTP from Admin.`, 'info');
             } else if (result.status === 'success') {
+                showLoader('Login successful! Loading dashboard...');
                 localStorage.setItem('user_session', JSON.stringify(result.session));
-                window.location.href = 'home.html';
+                setTimeout(() => { window.location.href = 'home.html'; }, 800);
             } else {
                 showMessage(result.message || 'Login failed', 'error');
             }

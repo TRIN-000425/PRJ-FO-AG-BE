@@ -3,7 +3,7 @@ let currentUpdatingDefect = null;
 let updatedDonePhotoBase64 = null;
 let isSyncing = false;
 let currentView = 'grid';
-const APP_VERSION = "1.6.6";
+const APP_VERSION = "1.6.7";
 
 window.allRenderedDefects = {};
 
@@ -39,7 +39,7 @@ window.exportUnitPDF = async (unitNumber) => {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
     const defects = Object.values(window.allRenderedDefects).filter(d => d.unit === unitNumber);
-    window.showLoader(`Generating professional report for ${unitNumber}...`);
+    window.showLoader(`Preparing PDF Report for ${unitNumber}...`);
     doc.setFontSize(22); doc.setTextColor(24, 119, 242); doc.text(`Punch List: Unit ${unitNumber}`, 20, 20);
     doc.setFontSize(10); doc.setTextColor(100); doc.text(`Generated: ${new Date().toLocaleString()}`, 20, 28);
     doc.line(20, 32, 190, 32);
@@ -63,7 +63,7 @@ window.exportUnitPDF = async (unitNumber) => {
         }
         y += 5;
     }
-    doc.save(`Report_${unitNumber}_${new Date().getTime()}.pdf`);
+    doc.save(`Report_${unitNumber}.pdf`);
     window.hideLoader();
 };
 
@@ -150,7 +150,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     let projectConfig = { syncedDefects: [], unitNumbers: [], stories: [], unitTypes: [], maps: [] };
 
     window.showLoader = (text) => {
-        document.getElementById('loader-text').textContent = text || 'Loading...';
+        const loaderText = document.getElementById('loader-text');
+        if (loaderText) loaderText.textContent = text || 'Loading...';
         document.getElementById('global-loader').style.display = 'flex';
     };
     window.hideLoader = () => document.getElementById('global-loader').style.display = 'none';
@@ -165,7 +166,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    async function renderDashboard() {
+    async function renderDashboard(useLoader = false) {
+        if (useLoader) window.showLoader('Recalculating lifecycle data...');
         const cached = localStorage.getItem('project_config');
         if (cached) projectConfig = JSON.parse(cached);
         const pending = await db.getAll('pending_defects');
@@ -177,6 +179,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         masterDefectList.forEach(d => { window.allRenderedDefects[d.id] = d; });
         applyFilters();
         checkUnsynced();
+        if (useLoader) window.hideLoader();
     }
 
     function applyFilters() {
@@ -266,13 +269,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             } catch (e) {}
         }
         isSyncing = false;
-        await refreshConfig();
+        await refreshConfig(false);
         updateSyncUI(navigator.onLine ? 'online' : 'offline');
         checkUnsynced();
     }
 
-    async function refreshConfig() {
+    async function refreshConfig(useLoader = true) {
         if (!navigator.onLine) return;
+        if (useLoader) window.showLoader('Fetching project setup from Cloud...');
         try {
             const res = await authorizedPost('get_config', {});
             if (res) {
@@ -281,10 +285,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                     localStorage.setItem('project_config', JSON.stringify(result.config));
                     projectConfig = result.config;
                     await loadAdminSelectors();
-                    await renderDashboard();
+                    await renderDashboard(false);
                 }
             }
         } catch (e) {}
+        if (useLoader) window.hideLoader();
     }
 
     function updateSyncUI(status) {
@@ -298,22 +303,30 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('reset-filter-btn').onclick = () => { searchInput.value = ''; filterStatus.value = 'all'; applyFilters(); };
     viewGridBtn.onclick = () => { currentView = 'grid'; viewGridBtn.classList.add('success'); viewListBtn.classList.remove('success'); applyFilters(); };
     viewListBtn.onclick = () => { currentView = 'list'; viewListBtn.classList.add('success'); viewGridBtn.classList.remove('success'); applyFilters(); };
-    document.getElementById('banner-sync-btn').onclick = syncAllPending;
-    document.getElementById('sync-btn').onclick = async () => {
-        showLoader('Syncing All...');
+    document.getElementById('banner-sync-btn').onclick = async () => {
+        window.showLoader('Uploading reports...');
         await syncAllPending();
-        await refreshConfig();
+        window.hideLoader();
+    };
+    document.getElementById('sync-btn').onclick = async () => {
+        showLoader('Full Cloud Sync & Update Check...');
+        await syncAllPending();
+        await refreshConfig(false);
         await checkAppVersion();
         if ('serviceWorker' in navigator) { const reg = await navigator.serviceWorker.getRegistration(); if (reg) await reg.update(); }
         hideLoader();
     };
 
-    document.getElementById('refresh-admin-table-btn').onclick = refreshConfig;
+    document.getElementById('refresh-admin-table-btn').onclick = () => refreshConfig(true);
     document.getElementById('force-purge-btn').onclick = async () => {
-        if (confirm('Force purge cache?')) { localStorage.removeItem('project_config'); await refreshConfig(); }
+        if (confirm('Force purge local cache and re-download?')) {
+            window.showLoader('Purging local database...');
+            localStorage.removeItem('project_config');
+            await refreshConfig(true);
+        }
     };
 
-    window.addEventListener('online', () => { syncAllPending(); refreshConfig(); checkAppVersion(); });
+    window.addEventListener('online', () => { syncAllPending(); refreshConfig(false); checkAppVersion(); });
     setInterval(syncAllPending, 15000);
     setInterval(checkAppVersion, 300000);
     checkAppVersion();
@@ -321,6 +334,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('add-comment-btn').onclick = async () => {
         const msg = document.getElementById('new-comment-input').value.trim();
         if (!msg || !currentUpdatingDefect) return;
+        window.showLoader('Persisting note locally...');
         if (!currentUpdatingDefect.history) currentUpdatingDefect.history = [];
         currentUpdatingDefect.history.push({ time: new Date().toISOString(), msg: `Note: ${msg}` });
         document.getElementById('new-comment-input').value = '';
@@ -329,11 +343,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         await db.put('pending_defects', updated);
         renderTimeline(currentUpdatingDefect, document.getElementById('defect-timeline'));
         syncAllPending();
+        setTimeout(window.hideLoader, 300);
     };
 
     document.getElementById('save-update-btn').onclick = async () => {
         const newStatus = document.getElementById('update-status-select').value;
         if (newStatus === 'Done' && !updatedDonePhotoBase64 && !currentUpdatingDefect.donePhotoUrl) return alert('Photo required.');
+        window.showLoader('Saving changes to local DB...');
         if (newStatus !== currentUpdatingDefect.status) {
             if (!currentUpdatingDefect.history) currentUpdatingDefect.history = [];
             currentUpdatingDefect.history.push({ time: new Date().toISOString(), msg: `Status: ${newStatus}` });
@@ -342,8 +358,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         delete updated.isSynced;
         await db.put('pending_defects', updated);
         document.getElementById('detail-modal').style.display = 'none';
-        await renderDashboard();
+        await renderDashboard(false);
         syncAllPending();
+        setTimeout(window.hideLoader, 500);
     };
 
     document.getElementById('update-status-select').onchange = () => {
@@ -351,8 +368,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     document.getElementById('close-detail-btn').onclick = () => document.getElementById('detail-modal').style.display = 'none';
-    document.getElementById('logout-btn').onclick = () => { localStorage.clear(); window.location.href = 'index.html'; };
-    document.getElementById('new-report-btn').onclick = () => { window.location.href = 'defect.html'; };
+    document.getElementById('logout-btn').onclick = () => { 
+        window.showLoader('Signing out...');
+        localStorage.clear(); 
+        setTimeout(() => { window.location.href = 'index.html'; }, 500);
+    };
+    document.getElementById('new-report-btn').onclick = () => { 
+        window.showLoader('Loading Floor Plan...');
+        setTimeout(() => { window.location.href = 'defect.html'; }, 300);
+    };
 
     async function loadAdminSelectors() {
         const cached = localStorage.getItem('project_config');
@@ -390,7 +414,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     if (session.role === 'Admin') document.getElementById('admin-btn').style.display = 'block';
-    await renderDashboard();
+    await renderDashboard(true);
     await loadAdminSelectors();
 });
 

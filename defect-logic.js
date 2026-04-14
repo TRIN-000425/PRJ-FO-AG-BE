@@ -2,7 +2,7 @@ let compressedPhotoData = null;
 let projectConfig = { unitTypes: [], stories: [], unitNumbers: [], maps: [], syncedDefects: [] };
 let dbPromise = null;
 let isSyncing = false;
-const APP_VERSION = "1.6.6";
+const APP_VERSION = "1.6.7";
 
 // Initialize IndexedDB
 async function initDB() {
@@ -24,7 +24,6 @@ async function checkAppVersion() {
         const data = await res.json();
         if (data.version && data.version !== APP_VERSION) {
             console.log("New version available:", data.version);
-            // On reporting page, maybe don't force reload to avoid losing work, just log
         }
     } catch (e) {}
 }
@@ -68,7 +67,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (loader) loader.style.display = 'none';
     };
 
-    backBtn.onclick = () => window.location.href = 'home.html';
+    backBtn.onclick = () => {
+        window.showLoader('Returning to Dashboard...');
+        setTimeout(() => { window.location.href = 'home.html'; }, 300);
+    };
 
     let activePinContext = null;
 
@@ -110,18 +112,18 @@ document.addEventListener('DOMContentLoaded', async () => {
             } catch (e) {}
         }
         isSyncing = false;
-        await loadProjectConfig();
+        await loadProjectConfig(false);
         updateSyncUI(navigator.onLine ? 'online' : 'offline');
     }
 
-    window.addEventListener('online', () => { syncAllPending(); loadProjectConfig(); checkAppVersion(); });
+    window.addEventListener('online', () => { syncAllPending(); loadProjectConfig(false); checkAppVersion(); });
     setInterval(syncAllPending, 15000);
     setInterval(checkAppVersion, 300000);
     syncAllPending();
     checkAppVersion();
 
     syncBtn.onclick = async () => {
-        showLoader('Full Sync...');
+        showLoader('Synchronizing data with cloud...');
         await syncAllPending();
         await checkAppVersion();
         if ('serviceWorker' in navigator) { const reg = await navigator.serviceWorker.getRegistration(); if (reg) await reg.update(); }
@@ -129,7 +131,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     // --- CONFIG & RENDER ---
-    async function loadProjectConfig() {
+    async function loadProjectConfig(useLoader = true) {
+        if (useLoader) window.showLoader('Fetching project floor plans...');
         const cached = localStorage.getItem('project_config');
         if (cached) { projectConfig = JSON.parse(cached); renderSelectors(projectConfig); }
         if (navigator.onLine) {
@@ -145,6 +148,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             } catch (err) {}
         }
+        if (useLoader) window.hideLoader();
     }
 
     function renderSelectors(config) {
@@ -237,7 +241,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     saveBtn.onclick = async () => {
         const desc = document.getElementById('defect-desc').value;
-        if (!desc || !compressedPhotoData) return alert('Missing info');
+        if (!desc || !compressedPhotoData) return alert('Description and Photo are required.');
+        
+        window.showLoader('Staging report locally...');
         const defect = { 
             id: 'def-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5),
             description: desc, photo: compressedPhotoData, position: activePinContext.position, 
@@ -247,6 +253,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         updateSelection();
         closeModal();
         syncAllPending();
+        setTimeout(window.hideLoader, 500);
     };
 
     unitSelect.onchange = updateSelection;
@@ -266,7 +273,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         } catch (err) { return null; }
     }
 
-    await loadProjectConfig();
+    await loadProjectConfig(true);
 });
 
 function compressImage(file, max, qual, cb) {
