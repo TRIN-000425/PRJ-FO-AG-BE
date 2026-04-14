@@ -139,7 +139,11 @@
                     <option value="Done">Done</option>
                 </select>
             </div>
-            <button id="reset-filter-btn" class="primary" style="width: auto; height: 45px; padding: 0 20px; margin: 0;">Reset</button>
+            <div style="display: flex; gap: 5px;">
+                <button id="view-grid-btn" class="primary" style="width: auto; height: 45px; padding: 0 15px; margin: 0; font-size: 0.7rem;">Grid</button>
+                <button id="view-list-btn" class="primary" style="width: auto; height: 45px; padding: 0 15px; margin: 0; font-size: 0.7rem;">Map & Table</button>
+            </div>
+            <button id="reset-filter-btn" class="danger" style="width: auto; height: 45px; padding: 0 20px; margin: 0; font-size: 0.7rem;">Reset</button>
         </div>
 
         <div id="dashboard-content">
@@ -214,6 +218,6 @@
             });
         }
     </script>
-    <div style="position: fixed; bottom: 10px; right: 15px; font-size: 0.7rem; color: var(--text-muted); opacity: 0.5; z-index: 10000;">v1.4.0</div>
+    <div style="position: fixed; bottom: 10px; right: 15px; font-size: 0.7rem; color: var(--text-muted); opacity: 0.5; z-index: 10000;">v1.4.1</div>
 </body>
 </html>
