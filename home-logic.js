@@ -208,9 +208,26 @@ document.addEventListener('DOMContentLoaded', async () => {
         };
     }
 
+    const adminNavItem = document.getElementById('admin-nav-item');
+    const adminModal = document.getElementById('admin-modal');
+    const closeAdminBtn = document.getElementById('close-admin-btn');
+
+    if (closeAdminBtn) closeAdminBtn.onclick = () => adminModal.style.display = 'none';
+
     try {
         const session = JSON.parse(localStorage.getItem('user_session'));
         if (!session) { window.location.href = 'index.html'; return; }
+
+        if (session.role === 'Admin') {
+            if (adminNavItem) {
+                adminNavItem.style.display = 'flex';
+                adminNavItem.onclick = (e) => {
+                    e.preventDefault();
+                    adminModal.style.display = 'flex';
+                    loadAdminSelectors();
+                };
+            }
+        }
 
         const db = await initDB();
         const dashboardContent = document.getElementById('dashboard-content');
@@ -242,10 +259,53 @@ document.addEventListener('DOMContentLoaded', async () => {
                         localStorage.setItem('project_config', JSON.stringify(result.config));
                         projectConfig = result.config;
                         updateUnitDropdown(projectConfig.unitNumbers);
+                        loadAdminSelectors(); // Update the table if open
                         await renderDashboard();
                     }
                 }
             } catch (e) { await renderDashboard(); }
+        }
+
+        async function loadAdminSelectors() {
+            const cached = localStorage.getItem('project_config');
+            if (!cached) return;
+            try {
+                const config = JSON.parse(cached);
+                const unitSelect = document.getElementById('admin-unit-select');
+                const storySelect = document.getElementById('admin-story-select');
+                const tbody = document.getElementById('admin-data-table-body');
+
+                if (config.unitTypes && unitSelect) {
+                    unitSelect.innerHTML = config.unitTypes.map(u => `<option value="${u.value}">${u.label}</option>`).join('');
+                }
+                if (config.stories && storySelect) {
+                    storySelect.innerHTML = config.stories.map(s => `<option value="${s.value}">${s.label}</option>`).join('');
+                }
+                if (tbody && config.unitNumbers) {
+                    tbody.innerHTML = config.unitNumbers.map(un => {
+                        const floors = (config.maps || []).filter(m => m.unit === un.type).map(m => m.story).join(', ') || 'No maps';
+                        return `<tr style="border-bottom: 1px solid #eee;">
+                            <td style="padding: 10px;">${un.number}</td>
+                            <td style="padding: 10px;">${un.type}</td>
+                            <td style="padding: 10px;">${floors}</td>
+                        </tr>`;
+                    }).join('') || '<tr><td colspan="3" style="padding: 20px; text-align: center;">No units</td></tr>';
+                }
+            } catch (e) {}
+        }
+
+        const refreshAdminBtn = document.getElementById('refresh-admin-table-btn');
+        if (refreshAdminBtn) refreshAdminBtn.onclick = () => refreshConfig(false);
+        
+        const forcePurgeBtn = document.getElementById('force-purge-btn');
+        if (forcePurgeBtn) {
+            forcePurgeBtn.onclick = async () => {
+                if (confirm('Force purge local cache and re-download?')) {
+                    window.showLoader('Clearing Cache...');
+                    localStorage.removeItem('project_config');
+                    await refreshConfig(false);
+                }
+            };
         }
 
         function updateUnitDropdown(units) {

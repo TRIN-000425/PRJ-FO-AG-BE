@@ -85,6 +85,10 @@
                 <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 4V1L8 5l4 3V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>
                 <span>Sync</span>
             </a>
+            <a href="#" class="nav-item" id="admin-nav-item" style="display: none;">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49.86c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-.86c-.22-.08-.49 0-.61.22l-2 3.46c-.12.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-.86c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49.86c.22.08.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"/></svg>
+                <span>Setup</span>
+            </a>
             <a href="#" class="nav-item" id="logout-label">
                 <svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 3h-2v10h2V3zm4.83 2.17l-1.42 1.42C17.99 7.86 19 9.81 19 12c0 3.87-3.13 7-7 7s-7-3.13-7-7c0-2.19 1.01-4.14 2.58-5.42L6.17 5.17C4.23 6.82 3 9.26 3 12c0 4.97 4.03 9 9 9s9-4.03 9-9c0-2.74-1.23-5.18-3.17-6.83z"/></svg>
                 <span>Logout</span>
@@ -94,38 +98,47 @@
 
     <!-- Detail Modal -->
     <div id="detail-modal" class="modal-overlay">
+        ...
+    </div>
+
+    <!-- Admin Setup Modal -->
+    <div id="admin-modal" class="modal-overlay">
         <div class="modal-full">
             <header class="modal-header">
-                <button id="close-detail-btn" style="background: none; padding: 8px; min-width: auto; height: auto;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
-                <h2 style="flex-grow: 1; margin-left: 12px; font-size: 1.125rem;">Defect Details</h2>
-                <span id="detail-status-text" class="badge">Open</span>
+                <button id="close-admin-btn" style="background: none; padding: 8px; min-width: auto; height: auto;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+                <h2 style="flex-grow: 1; margin-left: 12px; font-size: 1.125rem;">Project Setup</h2>
+                <button id="force-purge-btn" class="outline" style="min-width: 100px; height: 32px; font-size: 0.7rem; border-color: var(--error-color); color: var(--error-color);">Purge Cache</button>
             </header>
             <div class="modal-body">
-                <div class="card" style="padding: 0; overflow: hidden;">
-                    <img id="detail-img" class="defect-card-img" style="height: 240px;" src="assets/floorplan-placeholder.png">
-                    <div style="padding: 16px;">
-                        <h3 id="detail-desc" style="margin-bottom: 12px;">Defect Description</h3>
-                        <div id="defect-timeline" style="max-height: 200px; overflow-y: auto; background: var(--bg-color); border-radius: 8px; padding: 12px; font-size: 0.875rem;"></div>
+                <div class="card">
+                    <h3 style="margin-bottom: 16px; font-size: 1rem;">Registered Units & Floors</h3>
+                    <div style="overflow-x: auto;">
+                        <table style="width: 100%; border-collapse: collapse; font-size: 0.875rem;">
+                            <thead>
+                                <tr style="text-align: left; border-bottom: 2px solid var(--bg-color);">
+                                    <th style="padding: 8px;">Unit #</th>
+                                    <th style="padding: 8px;">Type</th>
+                                    <th style="padding: 8px;">Mapped Floors</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin-data-table-body">
+                                <tr><td colspan="3" style="padding: 20px; text-align: center; color: var(--text-muted);">Syncing setup data...</td></tr>
+                            </tbody>
+                        </table>
                     </div>
+                    <button id="refresh-admin-table-btn" class="outline" style="width: 100%; margin-top: 16px; height: 40px;">Refresh Setup Data</button>
                 </div>
 
                 <div class="card">
-                    <h4 style="margin-bottom: 16px;">Update Status</h4>
+                    <h3 style="margin-bottom: 16px; font-size: 1rem;">Map Configuration (Debug)</h3>
                     <div class="input-group">
-                        <select id="update-status-select">
-                            <option value="Open">Open</option>
-                            <option value="Onprogress">In Progress</option>
-                            <option value="Done">Done</option>
-                        </select>
-                    </div>
-                    <div id="done-photo-group" class="input-group" style="display: none;">
-                        <label>Completion Photo Required</label>
-                        <input type="file" id="done-photo-input" accept="image/*" capture="environment">
+                        <label>Select Unit Type</label>
+                        <select id="admin-unit-select"></select>
                     </div>
                     <div class="input-group">
-                        <textarea id="new-comment-input" rows="2" placeholder="Add a note..."></textarea>
+                        <label>Select Floor</label>
+                        <select id="admin-story-select"></select>
                     </div>
-                    <button id="save-update-btn" class="primary" style="width: 100%;">Save Changes</button>
                 </div>
             </div>
         </div>
