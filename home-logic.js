@@ -145,6 +145,17 @@ function renderTimeline(defect, container) {
     container.scrollTop = container.scrollHeight;
 }
 
+window.showLoader = (text) => {
+    const loaderText = document.getElementById('loader-text');
+    if (loaderText) loaderText.textContent = text || 'Loading...';
+    const loader = document.getElementById('global-loader');
+    if (loader) loader.style.display = 'flex';
+};
+window.hideLoader = () => {
+    const loader = document.getElementById('global-loader');
+    if (loader) loader.style.display = 'none';
+};
+
 document.addEventListener('DOMContentLoaded', async () => {
     console.log("Dashboard initializing...");
 
@@ -155,23 +166,21 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // --- IMMEDIATE NAV BINDING ---
     if (newReportLabel) {
-        newReportLabel.onclick = (e) => {
-            console.log("Nav: New Report");
+        newReportLabel.onclick = () => {
             const radio = document.getElementById('new-report-radio');
             if (radio) radio.checked = true;
             window.showLoader('Opening Report View...');
-            setTimeout(() => { window.location.href = 'defect.html'; }, 300);
+            setTimeout(() => { window.location.href = 'defect.html'; }, 200);
         };
     }
 
     if (logoutLabel) {
-        logoutLabel.onclick = (e) => {
-            console.log("Nav: Logout");
+        logoutLabel.onclick = () => {
             const radio = document.getElementById('logout-radio');
             if (radio) radio.checked = true;
             window.showLoader('Signing out...');
             localStorage.clear(); 
-            setTimeout(() => { window.location.href = 'index.html'; }, 500);
+            setTimeout(() => { window.location.href = 'index.html'; }, 200);
         };
     }
 
@@ -200,15 +209,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (syncLabel) {
             syncLabel.onclick = async () => {
-                console.log("Nav: Sync");
                 const radio = document.getElementById('sync-radio');
                 if (radio) radio.checked = true;
-                showLoader('Full Synchronization in Progress...');
+                window.showLoader('Full Synchronization in Progress...');
                 await syncAllPending(false);
                 await refreshConfig(false);
                 await checkAppVersion();
                 if ('serviceWorker' in navigator) { const reg = await navigator.serviceWorker.getRegistration(); if (reg) await reg.update(); }
-                hideLoader();
+                window.hideLoader();
             };
         }
 
@@ -221,16 +229,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         let masterDefectList = [];
         let projectConfig = { syncedDefects: [], unitNumbers: [], stories: [], unitTypes: [], maps: [] };
-
-        window.showLoader = (text) => {
-            const loaderText = document.getElementById('loader-text');
-            if (loaderText) loaderText.textContent = text || 'Loading...';
-            document.getElementById('global-loader').style.display = 'flex';
-        };
-        window.hideLoader = () => {
-            const loader = document.getElementById('global-loader');
-            if (loader) loader.style.display = 'none';
-        };
 
         async function checkUnsynced() {
             const pending = await db.getAll('pending_defects');
