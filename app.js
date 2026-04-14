@@ -7,11 +7,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const passwordGroup = document.getElementById('password-group');
     const otpInput = document.getElementById('otp');
     const changeUsernameLink = document.getElementById('change-username-link');
-    const APP_VERSION = "1.6.7";
+    const APP_VERSION = "1.6.8";
 
     // GA_BACKEND_URL is defined in config.js
 
-    // --- DEVICE ID LOGIC ---
     function getDeviceId() {
         let id = localStorage.getItem('device_id');
         if (!id) {
@@ -21,14 +20,12 @@ document.addEventListener('DOMContentLoaded', () => {
         return id;
     }
 
-    // Version Check
     async function checkAppVersion() {
         if (!navigator.onLine) return;
         try {
             const res = await fetch('version.json?t=' + Date.now());
             const data = await res.json();
             if (data.version && data.version !== APP_VERSION) {
-                console.log("New version available:", data.version);
                 if (!localStorage.getItem('user_session')) window.location.reload();
             }
         } catch (e) {}
@@ -36,15 +33,12 @@ document.addEventListener('DOMContentLoaded', () => {
     setInterval(checkAppVersion, 300000);
     checkAppVersion();
 
-    // Check existing session
     const session = JSON.parse(localStorage.getItem('user_session'));
     if (session) { 
         showLoader('Welcome back! Redirecting...');
         setTimeout(() => { window.location.href = 'home.html'; }, 500);
         return; 
     }
-
-    let currentUsername = "";
 
     loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -53,9 +47,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const otp = otpInput.value.trim();
         const deviceId = getDeviceId();
 
-        showLoader('Authenticating with Cloud...');
+        // Determine action: if OTP field is showing, we are verifying OTP
+        const isOtpStep = otpGroup.style.display === 'block';
+        const action = isOtpStep ? 'verify_otp' : 'login';
+        
+        showLoader(isOtpStep ? 'Verifying Authentication Code...' : 'Authenticating with Cloud...');
+        
         try {
-            const payload = { action: 'login', username, password, otp, deviceId };
+            const payload = { action, username, password, otp, deviceId };
             const res = await fetch(GA_BACKEND_URL, {
                 method: 'POST',
                 mode: 'cors',
@@ -67,17 +66,27 @@ document.addEventListener('DOMContentLoaded', () => {
             hideLoader();
 
             if (result.status === 'requires_otp') {
-                currentUsername = username;
                 passwordGroup.style.display = 'none';
                 otpGroup.style.display = 'block';
                 document.getElementById('username').readOnly = true;
                 showMessage(`Device not recognized. Device ID: ${deviceId}. Please enter OTP from Admin.`, 'info');
             } else if (result.status === 'success') {
-                showLoader('Login successful! Loading dashboard...');
-                localStorage.setItem('user_session', JSON.stringify(result.session));
+                showLoader('Authorization confirmed! Loading dashboard...');
+                localStorage.setItem('user_session', JSON.stringify(result.session || result.user)); // result.session usually from login, result.user from verify_otp
+                
+                // If backend sent session object inside result.session, keep it. 
+                // If it sent user and deviceToken separately (like handleVerifyOtp), reconstruct it.
+                if (result.user && result.deviceToken) {
+                    localStorage.setItem('user_session', JSON.stringify({
+                        ...result.user,
+                        deviceId: deviceId,
+                        deviceToken: result.deviceToken
+                    }));
+                }
+
                 setTimeout(() => { window.location.href = 'home.html'; }, 800);
             } else {
-                showMessage(result.message || 'Login failed', 'error');
+                showMessage(result.message || 'Authentication failed', 'error');
             }
         } catch (err) {
             hideLoader();
@@ -99,10 +108,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (loaderText) loaderText.textContent = text;
         document.getElementById('global-loader').style.display = 'flex';
     }
-
-    function hideLoader() {
-        document.getElementById('global-loader').style.display = 'none';
-    }
+    function hideLoader() { document.getElementById('global-loader').style.display = 'none'; }
     function showMessage(text, type) {
         messageDiv.textContent = text;
         messageDiv.className = 'message ' + type;
