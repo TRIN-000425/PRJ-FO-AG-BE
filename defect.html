@@ -161,6 +161,19 @@
         </div>
     </div>
 
+    <!-- Multi-Selection Modal -->
+    <div id="selection-modal" class="modal-overlay">
+        <div class="modal-full" style="height: auto; max-height: 80vh; margin-top: auto; border-radius: 24px 24px 0 0; animation: slideUp 0.3s ease;">
+            <header class="modal-header">
+                <h2 style="flex-grow: 1; font-size: 1.125rem;">Existing defects here</h2>
+                <button id="close-selection-btn" style="background: none; padding: 8px; min-width: auto; height: auto;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+            </header>
+            <div class="modal-body" id="selection-list" style="padding-bottom: 40px;">
+                <!-- List of defects will be injected here -->
+            </div>
+        </div>
+    </div>
+
     <div id="global-loader">
         <div class="spinner"></div>
         <p id="loader-text" style="margin-top: 16px; font-weight: 500;">Syncing...</p>

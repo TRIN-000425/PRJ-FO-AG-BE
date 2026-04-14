@@ -377,7 +377,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (!dashboardContent) return;
             if (filtered.length === 0) { dashboardContent.innerHTML = '<p style="text-align:center; padding:40px; color:#666;">No defects found.</p>'; return; }
             
-            const grouped = filtered.reduce((acc, d) => {
+            const groupedByFloor = filtered.reduce((acc, d) => {
                 const key = `${d.unit} - ${d.story}`;
                 if (!acc[key]) acc[key] = [];
                 acc[key].push(d);
@@ -385,7 +385,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }, {});
 
             let html = '';
-            for (const [title, defects] of Object.entries(grouped)) {
+            for (const [title, defects] of Object.entries(groupedByFloor)) {
                 const [unitNo, story] = title.split(' - ');
                 const unitMapping = projectConfig.unitNumbers.find(u => u.number === unitNo);
                 const unitType = unitMapping ? unitMapping.type : unitNo;
@@ -395,17 +395,32 @@ document.addEventListener('DOMContentLoaded', async () => {
                     if (m) mapUrl = fixMapUrl(m.mapUrl);
                 }
 
+                // Group defects by position (threshold 2%)
+                const clusters = [];
+                defects.forEach(d => {
+                    const cluster = clusters.find(c => Math.abs(c.x - d.position.x) < 2 && Math.abs(c.y - d.position.y) < 2);
+                    if (cluster) cluster.defects.push(d);
+                    else clusters.push({ x: d.position.x, y: d.position.y, defects: [d] });
+                });
+
                 html += `<div class="card" style="padding:12px; margin-bottom:24px;">
                     <h3 style="font-size:1rem; margin-bottom:12px;">${title}</h3>
                     <div style="position:relative; width:100%; border-radius:8px; overflow:hidden; background:#eee;">
                         <img src="${mapUrl}" style="width:100%; display:block;">
-                        ${defects.map(d => {
+                        ${clusters.map(c => {
+                            const count = c.defects.length;
+                            const mainDefect = c.defects[0];
                             const colors = { Open: '#f9ab00', Onprogress: '#1a73e8', Done: '#188038' };
-                            return `<div onclick="window.showDefectDetailById('${d.id}')" style="position:absolute; left:${d.position.x}%; top:${d.position.y}%; width:16px; height:16px; background:${colors[d.status]||'red'}; border:2px solid #fff; border-radius:50%; transform:translate(-50%,-50%); cursor:pointer; box-shadow:0 2px 4px rgba(0,0,0,0.3);"></div>`;
+                            const bgColor = count > 1 ? '#333' : (colors[mainDefect.status] || 'red');
+                            
+                            return `<div onclick="window.handlePinClick('${encodeURIComponent(JSON.stringify(c.defects))}')" 
+                                style="position:absolute; left:${c.x}%; top:${c.y}%; width:20px; height:20px; background:${bgColor}; border:2px solid #fff; border-radius:50%; transform:translate(-50%,-50%); cursor:pointer; box-shadow:0 2px 4px rgba(0,0,0,0.3); display:flex; align-items:center; justify-content:center; color:white; font-size:10px; font-weight:bold; z-index:10;">
+                                ${count > 1 ? count : ''}
+                            </div>`;
                         }).join('')}
                     </div>
                     <div style="margin-top:12px;">
-                        ${defects.map(d => `<div onclick="window.showDefectDetailById('${d.id}')" style="font-size:0.875rem; padding:8px 0; border-top:1px solid #eee; display:flex; align-items:center; justify-content:space-between;">
+                        ${defects.map(d => `<div onclick="window.showDefectDetailById('${d.id}')" style="font-size:0.875rem; padding:8px 0; border-top:1px solid #eee; display:flex; align-items:center; justify-content:space-between; cursor:pointer;">
                             <span style="color:#333;">${d.description}</span>
                             <span class="badge ${d.status}" style="font-size:0.65rem; padding:2px 8px;">${d.status}</span>
                         </div>`).join('')}
@@ -414,6 +429,41 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             dashboardContent.innerHTML = html;
         }
+
+        window.handlePinClick = (encodedDefects) => {
+            const defects = JSON.parse(decodeURIComponent(encodedDefects));
+            if (defects.length === 1) {
+                window.showDefectDetailById(defects[0].id);
+            } else {
+                showSelectionModal(defects);
+            }
+        };
+
+        function showSelectionModal(defects) {
+            const modal = document.getElementById('selection-modal');
+            const list = document.getElementById('selection-list');
+            if (!modal || !list) return;
+
+            list.innerHTML = defects.map(d => `
+                <div class="card" onclick="window.selectFromList('${d.id}')" style="display:flex; align-items:center; gap:12px; padding:12px; margin-bottom:8px; cursor:pointer;">
+                    <img src="${d.photo || (d.photoUrl ? fixMapUrl(d.photoUrl) : 'assets/floorplan-placeholder.png')}" style="width:50px; height:50px; border-radius:8px; object-fit:cover;">
+                    <div style="flex:1;">
+                        <div style="font-weight:600; font-size:0.9rem;">${d.description}</div>
+                        <div class="badge ${d.status}" style="font-size:0.6rem; padding:2px 6px; margin-top:4px;">${d.status}</div>
+                    </div>
+                </div>
+            `).join('');
+
+            window.selectFromList = (id) => {
+                modal.style.display = 'none';
+                window.showDefectDetailById(id);
+            };
+
+            modal.style.display = 'flex';
+        }
+
+        const closeSelectionBtn = document.getElementById('close-selection-btn');
+        if (closeSelectionBtn) closeSelectionBtn.onclick = () => document.getElementById('selection-modal').style.display = 'none';
 
         async function authorizedPost(action, payload) {
             try {
