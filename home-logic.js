@@ -512,16 +512,18 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return res;
             } catch (e) { return null; }
         }
-
-        await checkAppVersion();
-        window.showLoader('Syncing...');
-        if (navigator.onLine) {
-            await syncAllPending(true);
-            await refreshConfig(true);
-        } else {
-            await renderDashboard();
-        }
-        window.hideLoader();
+// --- STARTUP ---
+await checkAppVersion();
+window.showLoader('Connecting to server...');
+if (navigator.onLine) {
+    window.showLoader('Syncing with Google Sheets...');
+    await syncAllPending(true);
+    await refreshConfig(true);
+} else {
+    window.showLoader('Loading offline data...');
+    await renderDashboard();
+}
+setTimeout(window.hideLoader, 1500); // Slight delay for smooth logo animation transition
 
     } catch (err) {
         console.error("Init Failure:", err);
