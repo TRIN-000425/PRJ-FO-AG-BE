@@ -417,8 +417,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return acc;
             }, {});
 
+            // Explicitly sort floors (L1 before L2, etc.)
+            const sortedFloorKeys = Object.keys(groupedByFloor).sort((a, b) => a.localeCompare(b, undefined, {numeric: true, sensitivity: 'base'}));
+
             let html = '';
-            for (const [title, defects] of Object.entries(groupedByFloor)) {
+            for (const title of sortedFloorKeys) {
+                const defects = groupedByFloor[title];
                 const [unitNo, story] = title.split(' - ');
                 const unitMapping = projectConfig.unitNumbers.find(u => u.number === unitNo);
                 const unitType = unitMapping ? unitMapping.type : unitNo;
@@ -439,7 +443,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <h3 style="font-size:1.1rem; margin-bottom:16px; border-bottom: 1px solid #eee; padding-bottom: 8px;">${title}</h3>
                     <div class="map-view-container" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start;">
                         <!-- Map Side -->
-                        <div style="position:relative; width:100%; border-radius:12px; overflow:hidden; background:#eee; box-shadow: var(--shadow-soft);">
+                        <div class="floor-map-wrapper" style="position:relative; width:100%; border-radius:12px; overflow:hidden; background:#eee; box-shadow: var(--shadow-soft);">
                             <img src="${mapUrl}" style="width:100%; display:block;">
                             ${clusters.map(c => {
                                 const count = c.defects.length;
@@ -447,7 +451,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 const colors = { Open: '#f9ab00', Onprogress: '#1a73e8', Done: '#188038' };
                                 const bgColor = count > 1 ? '#333' : (colors[mainDefect.status] || 'red');
                                 
-                                return `<div id="pin-${mainDefect.id}" onclick="window.handlePinClick('${encodeURIComponent(JSON.stringify(c.defects))}')" 
+                                return `<div id="pin-${mainDefect.id}" onclick="window.handlePinClick('${encodeURIComponent(JSON.stringify(c.defects))}', event)" 
                                     style="position:absolute; left:${c.x}%; top:${c.y}%; width:20px; height:20px; background:${bgColor}; border:2px solid #fff; border-radius:50%; transform:translate(-50%,-50%); cursor:pointer; box-shadow:0 2px 4px rgba(0,0,0,0.3); display:flex; align-items:center; justify-content:center; color:white; font-size:10px; font-weight:bold; z-index:10; transition: all 0.2s;">
                                     ${count > 1 ? count : ''}
                                 </div>`;
@@ -478,6 +482,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.handlePinClick = (encodedDefects, event) => {
             if (event) event.stopPropagation();
             const defects = JSON.parse(decodeURIComponent(encodedDefects));
+            const pinElement = event.currentTarget;
             
             // 1. Bi-directional Sync: Scroll the table row into view
             const mainDefect = defects[0];
@@ -489,11 +494,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 setTimeout(() => rowElement.classList.remove('row-highlight'), 2000);
             }
 
-            // 2. Show Quick View Popover
-            showQuickViewPopover(defects, mainDefect.position);
+            // 2. Show Quick View Popover on the correct map container
+            const container = pinElement.closest('.floor-map-wrapper');
+            showQuickViewPopover(defects, mainDefect.position, container);
         };
 
-        function showQuickViewPopover(defects, pos) {
+        function showQuickViewPopover(defects, pos, container) {
             // Remove existing popovers
             const existing = document.querySelector('.pin-popover');
             if (existing) existing.remove();
@@ -529,17 +535,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
 
             popover.innerHTML = html;
-            
-            // Append to the specific map container that was clicked
-            const mapContainers = document.querySelectorAll('.map-view-container > div:first-child');
-            // We need to find which map this pin belongs to. 
-            // For now, simpler: append to the map parent of the clicked pin.
-            // But handlePinClick doesn't pass the element easily. 
-            // Improved: Add popover to the active map container.
-            const activeMap = document.activeElement ? document.activeElement.closest('.card') : null;
-            // Best approach: find all map views and append to the one containing the pin coords.
-            // Simplified for this turn: append to the first visible map view.
-            const container = document.querySelector('.map-view-container div[style*="position:relative"]');
             if (container) container.appendChild(popover);
 
             // Close on click outside
