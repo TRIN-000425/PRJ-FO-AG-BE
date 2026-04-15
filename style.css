@@ -446,8 +446,19 @@ input:focus, select:focus, textarea:focus {
 @media (min-width: 768px) {
     .main-content {
         padding: 32px;
-        max-width: 1000px;
+        width: 100%;
+        max-width: 1600px;
         margin: 0 auto;
+    }
+    
+    .top-app-bar {
+        padding: 0 32px;
+    }
+    
+    .top-app-bar .title {
+        max-width: 1600px;
+        margin: 0 auto;
+        padding-right: 32px; /* balance the status pill */
     }
     
     .bottom-nav {
