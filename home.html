@@ -105,31 +105,33 @@
                 <span id="detail-status-text" class="badge">Open</span>
             </header>
             <div class="modal-body">
-                <div class="card" style="padding: 0; overflow: hidden;">
-                    <img id="detail-img" class="defect-card-img" style="height: 240px;" src="assets/floorplan-placeholder.png">
-                    <div style="padding: 16px;">
-                        <h3 id="detail-desc" style="margin-bottom: 12px;">Defect Description</h3>
-                        <div id="defect-timeline" style="max-height: 200px; overflow-y: auto; background: var(--bg-color); border-radius: 8px; padding: 12px; font-size: 0.875rem;"></div>
+                <div class="modal-body-grid">
+                    <div class="card" style="padding: 0; overflow: hidden; margin-bottom: 0;">
+                        <img id="detail-img" class="defect-card-img" style="height: 240px; width: 100%; object-fit: cover;" src="assets/floorplan-placeholder.png">
+                        <div style="padding: 16px;">
+                            <h3 id="detail-desc" style="margin-bottom: 12px;">Defect Description</h3>
+                            <div id="defect-timeline" style="max-height: 200px; overflow-y: auto; background: var(--bg-color); border-radius: 8px; padding: 12px; font-size: 0.875rem;"></div>
+                        </div>
                     </div>
-                </div>
 
-                <div class="card">
-                    <h4 style="margin-bottom: 16px;">Update Status</h4>
-                    <div class="input-group">
-                        <select id="update-status-select">
-                            <option value="Open">Open</option>
-                            <option value="Onprogress">In Progress</option>
-                            <option value="Done">Done</option>
-                        </select>
+                    <div class="card" style="margin-bottom: 0;">
+                        <h4 style="margin-bottom: 16px;">Update Status</h4>
+                        <div class="input-group">
+                            <select id="update-status-select">
+                                <option value="Open">Open</option>
+                                <option value="Onprogress">In Progress</option>
+                                <option value="Done">Done</option>
+                            </select>
+                        </div>
+                        <div id="done-photo-group" class="input-group" style="display: none;">
+                            <label>Completion Photo Required</label>
+                            <input type="file" id="done-photo-input" accept="image/*" capture="environment">
+                        </div>
+                        <div class="input-group">
+                            <textarea id="new-comment-input" rows="2" placeholder="Add a note..."></textarea>
+                        </div>
+                        <button id="save-update-btn" class="primary" style="width: 100%;">Save Changes</button>
                     </div>
-                    <div id="done-photo-group" class="input-group" style="display: none;">
-                        <label>Completion Photo Required</label>
-                        <input type="file" id="done-photo-input" accept="image/*" capture="environment">
-                    </div>
-                    <div class="input-group">
-                        <textarea id="new-comment-input" rows="2" placeholder="Add a note..."></textarea>
-                    </div>
-                    <button id="save-update-btn" class="primary" style="width: 100%;">Save Changes</button>
                 </div>
             </div>
         </div>

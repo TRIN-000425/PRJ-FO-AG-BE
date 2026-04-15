@@ -23,7 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const changeUsernameLink = document.getElementById('change-username-link');
 
         // APP_VERSION is defined in config.js
-        const version = (typeof APP_VERSION !== 'undefined') ? APP_VERSION : (window.APP_VERSION || "1.8.5");
+        const version = (typeof APP_VERSION !== 'undefined') ? APP_VERSION : (window.APP_VERSION || "1.8.6");
 
         function getDeviceId() {
             let id = localStorage.getItem('device_id');

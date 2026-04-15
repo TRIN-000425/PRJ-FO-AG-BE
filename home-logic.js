@@ -89,7 +89,7 @@ async function getBase64FromUrl(url) {
 // --- VERSION CHECKER ---
 async function checkAppVersion() {
     const localTag = document.getElementById('local-version-tag');
-    const version = (typeof APP_VERSION !== 'undefined') ? APP_VERSION : (window.APP_VERSION || "1.8.5");
+    const version = (typeof APP_VERSION !== 'undefined') ? APP_VERSION : (window.APP_VERSION || "1.8.6");
     if (localTag) localTag.textContent = 'v' + version;
     if (!navigator.onLine) return;
     try {
