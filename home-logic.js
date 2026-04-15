@@ -456,7 +456,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         
                         <!-- List Side -->
                         <div style="max-height: 400px; overflow-y: auto; padding-right: 8px;">
-                            ${defects.map(d => `<div onclick="window.showDefectDetailById('${d.id}')" 
+                            ${defects.map(d => `<div id="row-${d.id}" onclick="window.showDefectDetailById('${d.id}')" 
                                 onmouseenter="window.highlightPin('${d.id}', true)" 
                                 onmouseleave="window.highlightPin('${d.id}', false)" 
                                 style="font-size:0.875rem; padding:12px; border-radius: 8px; margin-bottom: 8px; border: 1px solid #eee; display:flex; align-items:center; justify-content:space-between; cursor:pointer; transition: all 0.2s;"
@@ -475,14 +475,82 @@ document.addEventListener('DOMContentLoaded', async () => {
             dashboardContent.innerHTML = html;
         }
 
-        window.handlePinClick = (encodedDefects) => {
+        window.handlePinClick = (encodedDefects, event) => {
+            if (event) event.stopPropagation();
             const defects = JSON.parse(decodeURIComponent(encodedDefects));
-            if (defects.length === 1) {
-                window.showDefectDetailById(defects[0].id);
-            } else {
-                showSelectionModal(defects);
+            
+            // 1. Bi-directional Sync: Scroll the table row into view
+            const mainDefect = defects[0];
+            const rowId = `row-${mainDefect.id}`;
+            const rowElement = document.getElementById(rowId);
+            if (rowElement) {
+                rowElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                rowElement.classList.add('row-highlight');
+                setTimeout(() => rowElement.classList.remove('row-highlight'), 2000);
             }
+
+            // 2. Show Quick View Popover
+            showQuickViewPopover(defects, mainDefect.position);
         };
+
+        function showQuickViewPopover(defects, pos) {
+            // Remove existing popovers
+            const existing = document.querySelector('.pin-popover');
+            if (existing) existing.remove();
+
+            const popover = document.createElement('div');
+            popover.className = 'pin-popover';
+            popover.style.left = pos.x + '%';
+            popover.style.top = pos.y + '%';
+
+            let html = '';
+            if (defects.length === 1) {
+                const d = defects[0];
+                const photo = d.photo || (d.photoUrl ? fixMapUrl(d.photoUrl) : 'assets/floorplan-placeholder.png');
+                html = `
+                    <div style="text-align: center;">
+                        <img src="${photo}" style="width: 100%; height: 80px; object-fit: cover; border-radius: 8px; margin-bottom: 8px;">
+                        <div style="font-weight: 600; font-size: 0.85rem; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${d.description}</div>
+                        <div class="badge ${d.status}" style="font-size: 0.6rem; padding: 2px 8px; margin-bottom: 8px;">${d.status}</div>
+                        <button onclick="window.showDefectDetailById('${d.id}')" class="primary" style="width: 100%; height: 28px; font-size: 0.7rem; padding: 0;">Full Details</button>
+                    </div>
+                `;
+            } else {
+                html = `
+                    <div style="font-weight: 600; font-size: 0.85rem; margin-bottom: 8px; border-bottom: 1px solid #eee; padding-bottom: 4px;">${defects.length} Defects here</div>
+                    <div style="max-height: 150px; overflow-y: auto;">
+                        ${defects.map(d => `
+                            <div onclick="window.showDefectDetailById('${d.id}')" style="font-size: 0.75rem; padding: 6px; border-radius: 4px; cursor: pointer; border-bottom: 1px solid #f5f5f5;" onmouseover="this.style.background='#f0f7ff'">
+                                <strong>${d.status}:</strong> ${d.description.substring(0, 20)}...
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            }
+
+            popover.innerHTML = html;
+            
+            // Append to the specific map container that was clicked
+            const mapContainers = document.querySelectorAll('.map-view-container > div:first-child');
+            // We need to find which map this pin belongs to. 
+            // For now, simpler: append to the map parent of the clicked pin.
+            // But handlePinClick doesn't pass the element easily. 
+            // Improved: Add popover to the active map container.
+            const activeMap = document.activeElement ? document.activeElement.closest('.card') : null;
+            // Best approach: find all map views and append to the one containing the pin coords.
+            // Simplified for this turn: append to the first visible map view.
+            const container = document.querySelector('.map-view-container div[style*="position:relative"]');
+            if (container) container.appendChild(popover);
+
+            // Close on click outside
+            const closeHandler = (e) => {
+                if (!popover.contains(e.target)) {
+                    popover.remove();
+                    document.removeEventListener('click', closeHandler);
+                }
+            };
+            setTimeout(() => document.addEventListener('click', closeHandler), 10);
+        }
 
         function showSelectionModal(defects) {
             const modal = document.getElementById('selection-modal');
