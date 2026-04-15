@@ -397,6 +397,12 @@ input:focus, select:focus, textarea:focus {
 }
 
 /* Responsive */
+@media (max-width: 768px) {
+    .map-view-container {
+        grid-template-columns: 1fr !important;
+    }
+}
+
 @media (min-width: 768px) {
     .main-content {
         padding: 32px;

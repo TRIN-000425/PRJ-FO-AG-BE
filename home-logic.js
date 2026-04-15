@@ -435,32 +435,40 @@ document.addEventListener('DOMContentLoaded', async () => {
                     else clusters.push({ x: d.position.x, y: d.position.y, defects: [d] });
                 });
 
-                html += `<div class="card" style="padding:12px; margin-bottom:24px;">
-                    <h3 style="font-size:1rem; margin-bottom:12px;">${title}</h3>
-                    <div style="position:relative; width:100%; border-radius:8px; overflow:hidden; background:#eee;">
-                        <img src="${mapUrl}" style="width:100%; display:block;">
-                        ${clusters.map(c => {
-                            const count = c.defects.length;
-                            const mainDefect = c.defects[0];
-                            const colors = { Open: '#f9ab00', Onprogress: '#1a73e8', Done: '#188038' };
-                            const bgColor = count > 1 ? '#333' : (colors[mainDefect.status] || 'red');
-                            
-                            return `<div id="pin-${mainDefect.id}" onclick="window.handlePinClick('${encodeURIComponent(JSON.stringify(c.defects))}')" 
-                                style="position:absolute; left:${c.x}%; top:${c.y}%; width:16px; height:16px; background:${bgColor}; border:2px solid #fff; border-radius:50%; transform:translate(-50%,-50%); cursor:pointer; box-shadow:0 2px 4px rgba(0,0,0,0.3); display:flex; align-items:center; justify-content:center; color:white; font-size:10px; font-weight:bold; z-index:10; transition: all 0.2s;">
-                                ${count > 1 ? count : ''}
-                            </div>`;
-                        }).join('')}
-                    </div>
-                    <div style="margin-top:12px;">
-                        ${defects.map(d => `<div onclick="window.showDefectDetailById('${d.id}')" 
-                            onmouseenter="window.highlightPin('${d.id}', true)" 
-                            onmouseleave="window.highlightPin('${d.id}', false)" 
-                            style="font-size:0.875rem; padding:10px 8px; border-top:1px solid #eee; display:flex; align-items:center; justify-content:space-between; cursor:pointer; transition: background 0.2s;"
-                            onmouseover="this.style.background='#f0f7ff'"
-                            onmouseout="this.style.background='transparent'">
-                            <span style="color:#333;">${d.description}</span>
-                            <span class="badge ${d.status}" style="font-size:0.65rem; padding:2px 8px;">${d.status}</span>
-                        </div>`).join('')}
+                html += `<div class="card" style="padding:16px; margin-bottom:24px;">
+                    <h3 style="font-size:1.1rem; margin-bottom:16px; border-bottom: 1px solid #eee; padding-bottom: 8px;">${title}</h3>
+                    <div class="map-view-container" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start;">
+                        <!-- Map Side -->
+                        <div style="position:relative; width:100%; border-radius:12px; overflow:hidden; background:#eee; box-shadow: var(--shadow-soft);">
+                            <img src="${mapUrl}" style="width:100%; display:block;">
+                            ${clusters.map(c => {
+                                const count = c.defects.length;
+                                const mainDefect = c.defects[0];
+                                const colors = { Open: '#f9ab00', Onprogress: '#1a73e8', Done: '#188038' };
+                                const bgColor = count > 1 ? '#333' : (colors[mainDefect.status] || 'red');
+                                
+                                return `<div id="pin-${mainDefect.id}" onclick="window.handlePinClick('${encodeURIComponent(JSON.stringify(c.defects))}')" 
+                                    style="position:absolute; left:${c.x}%; top:${c.y}%; width:20px; height:20px; background:${bgColor}; border:2px solid #fff; border-radius:50%; transform:translate(-50%,-50%); cursor:pointer; box-shadow:0 2px 4px rgba(0,0,0,0.3); display:flex; align-items:center; justify-content:center; color:white; font-size:10px; font-weight:bold; z-index:10; transition: all 0.2s;">
+                                    ${count > 1 ? count : ''}
+                                </div>`;
+                            }).join('')}
+                        </div>
+                        
+                        <!-- List Side -->
+                        <div style="max-height: 400px; overflow-y: auto; padding-right: 8px;">
+                            ${defects.map(d => `<div onclick="window.showDefectDetailById('${d.id}')" 
+                                onmouseenter="window.highlightPin('${d.id}', true)" 
+                                onmouseleave="window.highlightPin('${d.id}', false)" 
+                                style="font-size:0.875rem; padding:12px; border-radius: 8px; margin-bottom: 8px; border: 1px solid #eee; display:flex; align-items:center; justify-content:space-between; cursor:pointer; transition: all 0.2s;"
+                                onmouseover="this.style.background='#f0f7ff'; this.style.borderColor='#1a73e8'"
+                                onmouseout="this.style.background='transparent'; this.style.borderColor='#eee'">
+                                <div style="flex: 1; min-width: 0;">
+                                    <div style="color:#333; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${d.description}</div>
+                                    <div style="font-size: 0.7rem; color: #888; margin-top: 2px;">Reported: ${new Date(d.timestamp).toLocaleDateString()}</div>
+                                </div>
+                                <span class="badge ${d.status}" style="font-size:0.6rem; padding:2px 8px; margin-left: 10px;">${d.status}</span>
+                            </div>`).join('')}
+                        </div>
                     </div>
                 </div>`;
             }
