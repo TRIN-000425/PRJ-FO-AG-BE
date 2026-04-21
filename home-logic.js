@@ -109,18 +109,15 @@ window.showDefectDetailById = (id) => {
         
         miniMap.src = mapUrl;
 
-        // Correct Zoom Math: 
-        // We are using a 4x zoom (400% width/height).
-        // translateX/Y are as a percentage of the image itself.
-        // Formula to center a point (p) in normalized 0-1 range:
-        // Trans = (0.5/Scale - p) * 100
+        // Correct Zoom Math for aspect-ratio preserved image (contain):
+        // We set transform-origin to the defect point and scale up.
+        // This keeps the defect point centered if we also move it.
         const scale = 4;
-        const translateX = (0.5 / scale - (defect.position.x / 100)) * 100;
-        const translateY = (0.5 / scale - (defect.position.y / 100)) * 100;
-        
-        miniMap.style.width = (scale * 100) + '%';
-        miniMap.style.height = (scale * 100) + '%';
-        miniMap.style.transform = `translate(${translateX}%, ${translateY}%)`; 
+        miniMap.style.width = '100%';
+        miniMap.style.height = '100%';
+        miniMap.style.objectFit = 'contain';
+        miniMap.style.transformOrigin = `${defect.position.x}% ${defect.position.y}%`;
+        miniMap.style.transform = `scale(${scale})`;
         miniMap.style.position = 'absolute';
         miniMap.style.top = '0';
         miniMap.style.left = '0';

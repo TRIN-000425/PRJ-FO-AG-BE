@@ -522,9 +522,9 @@ input:focus, select:focus, textarea:focus {
 
 .location-preview-map {
     position: absolute;
-    width: 400%; /* Scale for zoom effect */
-    height: 400%;
-    object-fit: fill; /* Essential for percentage-based translation math */
+    width: 100%;
+    height: 100%;
+    object-fit: contain; /* Prevent stretching */
     transition: transform 0.3s ease;
     pointer-events: none;
     z-index: 1;
