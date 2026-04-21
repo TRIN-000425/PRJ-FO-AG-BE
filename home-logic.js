@@ -91,9 +91,12 @@ window.showDefectDetailById = (id) => {
     const miniMap = document.getElementById('detail-location-map');
     if (miniMap && defect.position) {
         console.log("Rendering mini-map for defect:", defect.id, "at", defect.position);
-        const unitMapping = projectConfig.unitNumbers.find(u => u.number === defect.unit);
+        
+        // Find map from global projectConfig
+        const unitMapping = (projectConfig.unitNumbers || []).find(u => u.number === defect.unit);
         const unitType = unitMapping ? unitMapping.type : defect.unit;
         let mapUrl = 'assets/floorplan-placeholder.png';
+        
         if (projectConfig.maps) {
             const m = projectConfig.maps.find(map => map.unit === unitType && map.story === defect.story);
             if (m) {
@@ -103,13 +106,24 @@ window.showDefectDetailById = (id) => {
                 console.warn("No map found for unitType:", unitType, "story:", defect.story);
             }
         }
+        
         miniMap.src = mapUrl;
-        // Zoom logic: center the pin (x,y in %) within the 4x scaled image
-        // To center (x,y) in a viewport, we need to translate the image
-        // Since image is 400% width, x=50% is at 200% mark.
-        const translateX = 50 - (defect.position.x * 4);
-        const translateY = 50 - (defect.position.y * 4);
-        miniMap.style.transform = `translate(${translateX}%, ${translateY}%) scale(1)`; 
+
+        // Correct Zoom Math: 
+        // We are using a 4x zoom (400% width/height).
+        // translateX/Y are as a percentage of the image itself.
+        // Formula to center a point (p) in normalized 0-1 range:
+        // Trans = (0.5/Scale - p) * 100
+        const scale = 4;
+        const translateX = (0.5 / scale - (defect.position.x / 100)) * 100;
+        const translateY = (0.5 / scale - (defect.position.y / 100)) * 100;
+        
+        miniMap.style.width = (scale * 100) + '%';
+        miniMap.style.height = (scale * 100) + '%';
+        miniMap.style.transform = `translate(${translateX}%, ${translateY}%)`; 
+        miniMap.style.position = 'absolute';
+        miniMap.style.top = '0';
+        miniMap.style.left = '0';
     }
 
     const locationPreview = document.getElementById('detail-location-preview');
