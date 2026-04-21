@@ -2,7 +2,7 @@
  * Shared Utilities for Punch List PWA
  */
 
-window.APP_VERSION = "1.8.8";
+window.APP_VERSION = "1.9.2";
 
 // --- UI HELPERS ---
 window.showLoader = (text = 'Loading...') => {
@@ -103,6 +103,12 @@ window.checkAppVersion = async () => {
     const localTag = document.getElementById('local-version-tag');
     if (localTag) localTag.textContent = 'v' + window.APP_VERSION;
     
+    const updateBtn = document.getElementById('force-update-btn');
+    if (updateBtn && !updateBtn.dataset.listener) {
+        updateBtn.onclick = () => window.location.reload();
+        updateBtn.dataset.listener = "true";
+    }
+
     if (!navigator.onLine) return;
     try {
         const res = await fetch('version.json?t=' + Date.now());

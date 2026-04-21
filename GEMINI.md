@@ -5,5 +5,6 @@
 - The version must be updated in the following files:
   1. `config.js` (update `APP_VERSION` constant)
   2. `version.json` (update `version` field)
+  3. `libs/utils.js` (update `window.APP_VERSION` at the top)
 - Follow semantic versioning (e.g., 1.8.8 -> 1.8.9).
 - After updating the version, ensure `sw.js` cache version is incremented if new assets were added.
