@@ -509,7 +509,7 @@ input:focus, select:focus, textarea:focus {
 .location-preview-container {
     position: relative;
     width: 100%;
-    aspect-ratio: 1 / 1;
+    height: 0; padding-top: 100%;
     border-radius: 8px;
     overflow: hidden;
     background-color: #000;
