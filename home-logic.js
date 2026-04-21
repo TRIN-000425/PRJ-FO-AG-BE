@@ -129,24 +129,41 @@ window.showDefectDetailById = (id) => {
     const locationPreview = document.getElementById('detail-location-preview');
     if (locationPreview) {
         locationPreview.onclick = () => {
-            document.getElementById('detail-modal').style.display = 'none';
-            currentView = 'list';
-            const gridBtn = document.getElementById('view-grid-btn');
-            const listBtn = document.getElementById('view-list-btn');
-            if (gridBtn) gridBtn.className = 'outline';
-            if (listBtn) listBtn.className = 'primary';
-            applyFilters();
+            const lightbox = document.getElementById('full-map-modal');
+            const wrapper = document.getElementById('full-map-wrapper');
+            const title = document.getElementById('full-map-title');
             
-            setTimeout(() => {
-                const pin = document.getElementById(`pin-${defect.id}`);
-                if (pin) {
-                    pin.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    window.highlightPin(defect.id, true);
-                    setTimeout(() => window.highlightPin(defect.id, false), 3000);
+            if (lightbox && wrapper) {
+                const unitMapping = (projectConfig.unitNumbers || []).find(u => u.number === defect.unit);
+                const unitType = unitMapping ? unitMapping.type : defect.unit;
+                let mapUrl = 'assets/floorplan-placeholder.png';
+                if (projectConfig.maps) {
+                    const m = projectConfig.maps.find(map => map.unit === unitType && map.story === defect.story);
+                    if (m) mapUrl = window.fixMapUrl(m.mapUrl);
                 }
-            }, 500);
+
+                title.textContent = `Unit ${defect.unit} - ${defect.story}`;
+                wrapper.innerHTML = `<img src="${mapUrl}" style="width:100%; display:block; border-radius:12px;">`;
+                
+                // Add pins for this floor
+                const floorDefects = masterDefectList.filter(d => d.unit === defect.unit && d.story === defect.story);
+                floorDefects.forEach(d => {
+                    const pin = document.createElement('div');
+                    const colors = { Open: '#f9ab00', Onprogress: '#1a73e8', Done: '#188038' };
+                    const isTarget = d.id === defect.id;
+                    
+                    pin.style.cssText = `position:absolute; left:${d.position.x}%; top:${d.position.y}%; width:${isTarget?24:16}px; height:${isTarget?24:16}px; background:${colors[d.status]||'red'}; border:2px solid #fff; border-radius:50%; transform:translate(-50%,-50%); z-index:${isTarget?100:10}; box-shadow:0 2px 4px rgba(0,0,0,0.3); ${isTarget?'animation: pulse 1.5s infinite;':''}`;
+                    wrapper.appendChild(pin);
+                });
+
+                lightbox.style.display = 'flex';
+            }
         };
     }
+
+    document.getElementById('close-full-map-btn').onclick = () => {
+        document.getElementById('full-map-modal').style.display = 'none';
+    };
     
     const updateSelect = document.getElementById('update-status-select');
     if (updateSelect) updateSelect.value = defect.status || 'Open';

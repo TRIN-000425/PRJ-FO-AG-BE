@@ -198,6 +198,23 @@
         </div>
     </div>
 
+    <!-- Full Map Lightbox Modal -->
+    <div id="full-map-modal" class="modal-overlay" style="background-color: rgba(0,0,0,0.9);">
+        <div class="modal-full" style="background: transparent;">
+            <header class="modal-header" style="background: transparent; border: none; color: white;">
+                <button id="close-full-map-btn" style="background: rgba(0,0,0,0.5); color: white; border-radius: 50%; width: 40px; height: 40px; padding: 0; min-width: auto;">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                </button>
+                <h2 id="full-map-title" style="flex-grow: 1; margin-left: 16px; color: white; font-size: 1.125rem;">Floor Map</h2>
+            </header>
+            <div class="modal-body" style="display: flex; align-items: center; justify-content: center; padding: 0;">
+                <div id="full-map-wrapper" class="floor-map-wrapper" style="width: 95%; max-width: 1000px; margin: auto; background: white; border-radius: 12px; box-shadow: 0 0 30px rgba(0,0,0,0.5);">
+                    <!-- Map and pins will be cloned/injected here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Hidden radios for logic compatibility -->
     <div style="display: none;">
         <input type="radio" id="new-report-radio">
