@@ -90,12 +90,18 @@ window.showDefectDetailById = (id) => {
     // --- MINI MAP LOGIC ---
     const miniMap = document.getElementById('detail-location-map');
     if (miniMap && defect.position) {
+        console.log("Rendering mini-map for defect:", defect.id, "at", defect.position);
         const unitMapping = projectConfig.unitNumbers.find(u => u.number === defect.unit);
         const unitType = unitMapping ? unitMapping.type : defect.unit;
         let mapUrl = 'assets/floorplan-placeholder.png';
         if (projectConfig.maps) {
             const m = projectConfig.maps.find(map => map.unit === unitType && map.story === defect.story);
-            if (m) mapUrl = window.fixMapUrl(m.mapUrl);
+            if (m) {
+                mapUrl = window.fixMapUrl(m.mapUrl);
+                console.log("Found map URL:", mapUrl);
+            } else {
+                console.warn("No map found for unitType:", unitType, "story:", defect.story);
+            }
         }
         miniMap.src = mapUrl;
         // Zoom logic: center the pin (x,y in %) within the 4x scaled image
