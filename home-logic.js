@@ -128,7 +128,8 @@ window.showDefectDetailById = (id) => {
 
     const locationPreview = document.getElementById('detail-location-preview');
     if (locationPreview) {
-        locationPreview.onclick = () => {
+        locationPreview.onclick = (e) => {
+            if (e) e.stopPropagation();
             const lightbox = document.getElementById('full-map-modal');
             const wrapper = document.getElementById('full-map-wrapper');
             const title = document.getElementById('full-map-title');

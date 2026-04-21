@@ -518,7 +518,7 @@ input:focus, select:focus, textarea:focus {
     position: absolute;
     width: 400%; /* Scale for zoom effect */
     height: 400%;
-    object-fit: contain;
+    object-fit: fill; /* Essential for percentage-based translation math */
     transition: transform 0.3s ease;
     pointer-events: none;
     z-index: 1;
