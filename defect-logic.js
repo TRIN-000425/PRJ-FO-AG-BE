@@ -196,11 +196,32 @@ function compressImage(file, max, qual, cb) {
         const img = new Image();
         img.onload = () => {
             const canvas = document.createElement('canvas');
+            // Force square canvas
+            canvas.width = max;
+            canvas.height = max;
+            const ctx = canvas.getContext('2d');
+            
+            // Fill background with black
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, 0, max, max);
+
             let w = img.width, h = img.height;
-            if (w > h) { if (w > max) { h *= max/w; w = max; } }
-            else { if (h > max) { w *= max/h; h = max; } }
-            canvas.width = w; canvas.height = h;
-            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+            let targetW, targetH;
+
+            // Calculate scaled dimensions to fit inside max x max square
+            if (w > h) {
+                targetW = max;
+                targetH = h * (max / w);
+            } else {
+                targetH = max;
+                targetW = w * (max / h);
+            }
+
+            // Center the image on the square canvas
+            const offsetX = (max - targetW) / 2;
+            const offsetY = (max - targetH) / 2;
+
+            ctx.drawImage(img, offsetX, offsetY, targetW, targetH);
             cb(canvas.toDataURL('image/jpeg', qual));
         };
         img.src = e.target.result;
