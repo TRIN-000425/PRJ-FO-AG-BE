@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pwa-defect-v48';
+const CACHE_NAME = 'pwa-defect-v49';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -10,6 +10,7 @@ const STATIC_ASSETS = [
   './defect.html',
   './defect-logic.js',
   './libs/idb.js',
+  './libs/utils.js',
   './manifest.json',
   './assets/icon.svg',
   './assets/floorplan-placeholder.png'

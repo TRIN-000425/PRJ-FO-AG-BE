@@ -1,16 +1,3 @@
-// Essential UI helpers defined at the top
-window.showLoader = (text) => {
-    const loaderText = document.getElementById('loader-text');
-    if (loaderText) loaderText.textContent = text || 'Loading...';
-    const loader = document.getElementById('global-loader');
-    if (loader) loader.style.display = 'flex';
-};
-
-window.hideLoader = () => { 
-    const loader = document.getElementById('global-loader');
-    if (loader) loader.style.display = 'none'; 
-};
-
 document.addEventListener('DOMContentLoaded', () => {
     console.log("Login page initialized...");
     
@@ -22,30 +9,17 @@ document.addEventListener('DOMContentLoaded', () => {
         const otpInput = document.getElementById('otp');
         const changeUsernameLink = document.getElementById('change-username-link');
 
-        // APP_VERSION is defined in config.js
-        const version = (typeof APP_VERSION !== 'undefined') ? APP_VERSION : (window.APP_VERSION || "1.8.7");
-
         function getDeviceId() {
             let id = localStorage.getItem('device_id');
             if (!id) {
-                id = 'dev-' + Math.random().toString(36).substr(2, 9);
+                id = window.generateId('dev');
                 localStorage.setItem('device_id', id);
             }
             return id;
         }
 
-        async function checkAppVersion() {
-            if (!navigator.onLine) return;
-            try {
-                const res = await fetch('version.json?t=' + Date.now());
-                const data = await res.json();
-                if (data.version && data.version !== version) {
-                    if (!localStorage.getItem('user_session')) window.location.reload();
-                }
-            } catch (e) {}
-        }
-        setInterval(checkAppVersion, 300000);
-        checkAppVersion();
+        setInterval(window.checkAppVersion, 300000);
+        window.checkAppVersion();
 
         const session = JSON.parse(localStorage.getItem('user_session'));
         if (session) { 
@@ -57,7 +31,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (loginForm) {
             loginForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
-                console.log("Form submitted...");
                 
                 const username = document.getElementById('username').value.trim();
                 const password = document.getElementById('password').value;
@@ -70,13 +43,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 window.showLoader(isOtpStep ? 'Verifying Code...' : 'Authenticating...');
                 
                 try {
-                    const payload = { action, username, password, otp, deviceId };
-                    const res = await fetch(GA_BACKEND_URL, {
-                        method: 'POST',
-                        mode: 'cors',
-                        headers: { 'Content-Type': 'text/plain' },
-                        body: JSON.stringify(payload)
-                    });
+                    const payload = { username, password, otp, deviceId };
+                    const res = await window.authorizedPost(action, payload);
+
+                    if (!res) {
+                        window.hideLoader();
+                        showMessage('Connection error. Please try again.', 'error');
+                        return;
+                    }
 
                     const result = await res.json();
                     window.hideLoader();
@@ -88,23 +62,21 @@ document.addEventListener('DOMContentLoaded', () => {
                         showMessage(`Device not recognized. Enter OTP.`, 'info');
                     } else if (result.status === 'success') {
                         window.showLoader('Confirmed! Loading...');
-                        localStorage.setItem('user_session', JSON.stringify(result.session || result.user));
-                        if ((result.user || result.session) && result.deviceToken) {
-                            const updatedSession = {
-                                ...(result.user || result.session),
-                                deviceId: deviceId,
-                                deviceToken: result.deviceToken
-                            };
-                            localStorage.setItem('user_session', JSON.stringify(updatedSession));
-                        }
+                        const userData = result.session || result.user;
+                        const sessionData = {
+                            ...userData,
+                            deviceId: deviceId,
+                            deviceToken: result.deviceToken || userData.deviceToken
+                        };
+                        localStorage.setItem('user_session', JSON.stringify(sessionData));
                         setTimeout(() => { window.location.href = 'home.html'; }, 800);
                     } else {
                         showMessage(result.message || 'Login failed. Check your credentials.', 'error');
                     }
                 } catch (err) {
-                    console.error("Fetch error:", err);
+                    console.error("Login error:", err);
                     window.hideLoader();
-                    showMessage('Connection error. Please try again.', 'error');
+                    showMessage('An unexpected error occurred.', 'error');
                 }
             });
         }

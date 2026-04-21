@@ -1,259 +1,193 @@
 let compressedPhotoData = null;
 let projectConfig = { unitTypes: [], stories: [], unitNumbers: [], maps: [], syncedDefects: [] };
-let dbPromise = null;
 let isSyncing = false;
 
-// Initialize IndexedDB
-async function initDB() {
-    if (dbPromise) return dbPromise;
-    dbPromise = idb.openDB('defects-db', 1, {
-        upgrade(db) {
-            if (!db.objectStoreNames.contains('pending_defects')) {
-                db.createObjectStore('pending_defects', { keyPath: 'id' });
-            }
-        },
-    });
-    return dbPromise;
-}
-
-async function checkAppVersion() {
-    const localTag = document.getElementById('local-version-tag');
-    const version = (typeof APP_VERSION !== 'undefined') ? APP_VERSION : (window.APP_VERSION || "1.8.7");
-    if (localTag) localTag.textContent = 'v' + version;
-}
-
-window.showLoader = (text = 'Loading...') => {
-    const loader = document.getElementById('global-loader');
-    const loaderText = document.getElementById('loader-text');
-    if (loader) { if (loaderText) loaderText.textContent = text; loader.style.display = 'flex'; }
-};
-window.hideLoader = () => {
-    const loader = document.getElementById('global-loader');
-    if (loader) loader.style.display = 'none';
-};
-
 document.addEventListener('DOMContentLoaded', async () => {
-    const syncLabel = document.getElementById('sync-label');
-    const backLabel = document.getElementById('back-label');
+    const session = JSON.parse(localStorage.getItem('user_session'));
+    if (!session) { window.location.href = 'index.html'; return; }
+
+    const db = await window.initDB();
+    const mapContainer = document.getElementById('map-container');
+    const floorplanImg = document.getElementById('floorplan-img');
+    const unitSelect = document.getElementById('unit-number-select');
+    const storySelect = document.getElementById('story-select');
+    const unitDisplay = document.getElementById('current-unit-display');
+    const floorDisplay = document.getElementById('current-floor-display');
+    const pinsContainer = document.getElementById('pins-container');
+    const defectModal = document.getElementById('defect-modal');
+    const photoInput = document.getElementById('defect-photo');
+    const previewImg = document.getElementById('preview-img');
+    const photoPlaceholder = document.getElementById('photo-placeholder');
+    const saveBtn = document.getElementById('save-defect-btn');
+    const cancelBtn = document.getElementById('cancel-defect-btn');
+    const confirmPinBtn = document.getElementById('confirm-pin-btn');
+    const activeCrosshair = document.getElementById('active-crosshair');
+
+    let activePinPosition = null;
 
     // --- NAV BINDING ---
-    if (backLabel) {
-        backLabel.onclick = (e) => {
-            e.preventDefault();
-            window.showLoader('Returning to Dashboard...');
-            setTimeout(() => { window.location.href = 'home.html'; }, 200);
-        };
-    }
+    document.getElementById('back-label').onclick = (e) => {
+        e.preventDefault();
+        window.showLoader('Returning to Dashboard...');
+        setTimeout(() => { window.location.href = 'home.html'; }, 200);
+    };
 
-    if (syncLabel) {
-        syncLabel.onclick = async (e) => {
-            e.preventDefault();
-            window.showLoader('Syncing...');
-            await syncAllPending();
-            window.hideLoader();
-        };
-    }
+    document.getElementById('sync-label').onclick = async (e) => {
+        e.preventDefault();
+        window.showLoader('Syncing...');
+        await syncAllPending();
+        window.hideLoader();
+    };
 
-    try {
-        const session = JSON.parse(localStorage.getItem('user_session'));
-        if (!session) { window.location.href = 'index.html'; return; }
+    mapContainer.onclick = (e) => {
+        if (defectModal.style.display === 'flex') return;
+        const rect = mapContainer.getBoundingClientRect();
+        const x = ((e.clientX - rect.left) / rect.width) * 100;
+        const y = ((e.clientY - rect.top) / rect.height) * 100;
+        activePinPosition = { x, y };
+        
+        activeCrosshair.style.left = x + '%';
+        activeCrosshair.style.top = y + '%';
+        activeCrosshair.style.display = 'block';
+        confirmPinBtn.style.display = 'flex';
+    };
 
-        const db = await initDB();
-        const mapContainer = document.getElementById('map-container');
-        const floorplanImg = document.getElementById('floorplan-img');
-        const unitSelect = document.getElementById('unit-number-select');
-        const storySelect = document.getElementById('story-select');
-        const unitDisplay = document.getElementById('current-unit-display');
-        const floorDisplay = document.getElementById('current-floor-display');
-        const pinsContainer = document.getElementById('pins-container');
-        const defectModal = document.getElementById('defect-modal');
-        const photoInput = document.getElementById('defect-photo');
-        const previewImg = document.getElementById('preview-img');
-        const photoPlaceholder = document.getElementById('photo-placeholder');
-        const saveBtn = document.getElementById('save-defect-btn');
-        const cancelBtn = document.getElementById('cancel-defect-btn');
-        const confirmPinBtn = document.getElementById('confirm-pin-btn');
-        const activeCrosshair = document.getElementById('active-crosshair');
+    confirmPinBtn.onclick = () => {
+        defectModal.style.display = 'flex';
+        confirmPinBtn.style.display = 'none';
+    };
 
-        let activePinPosition = null;
+    cancelBtn.onclick = () => {
+        defectModal.style.display = 'none';
+        activeCrosshair.style.display = 'none';
+        activePinPosition = null;
+        document.getElementById('defect-desc').value = '';
+        previewImg.style.display = 'none';
+        photoPlaceholder.style.display = 'flex';
+        compressedPhotoData = null;
+    };
 
-        mapContainer.onclick = (e) => {
-            if (defectModal.style.display === 'flex') return;
-            const rect = mapContainer.getBoundingClientRect();
-            const x = ((e.clientX - rect.left) / rect.width) * 100;
-            const y = ((e.clientY - rect.top) / rect.height) * 100;
-            activePinPosition = { x, y };
-            
-            activeCrosshair.style.left = x + '%';
-            activeCrosshair.style.top = y + '%';
-            activeCrosshair.style.display = 'block';
-            confirmPinBtn.style.display = 'flex';
-        };
-
-        confirmPinBtn.onclick = () => {
-            defectModal.style.display = 'flex';
-            confirmPinBtn.style.display = 'none';
-        };
-
-        cancelBtn.onclick = () => {
-            defectModal.style.display = 'none';
-            activeCrosshair.style.display = 'none';
-            activePinPosition = null;
-            // Clear inputs
-            document.getElementById('defect-desc').value = '';
-            previewImg.style.display = 'none';
-            photoPlaceholder.style.display = 'flex';
-            compressedPhotoData = null;
-        };
-
-        photoInput.onchange = (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                document.getElementById('compressing-msg').style.display = 'block';
-                compressImage(file, 1024, 0.7, (base) => {
-                    compressedPhotoData = base;
-                    previewImg.src = base;
-                    previewImg.style.display = 'block';
-                    photoPlaceholder.style.display = 'none';
-                    document.getElementById('compressing-msg').style.display = 'none';
-                });
-            }
-        };
-
-        saveBtn.onclick = async () => {
-            const desc = document.getElementById('defect-desc').value.trim();
-            if (!desc || !compressedPhotoData) return alert('Photo and description are required.');
-            
-            window.showLoader('Saving Defect...');
-            const defect = { 
-                id: 'def-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5),
-                description: desc, photo: compressedPhotoData, position: activePinPosition, 
-                timestamp: new Date().toISOString(), unit: unitSelect.value, story: storySelect.value, status: 'Open', history: []
-            };
-            await db.put('pending_defects', defect);
-            await updateSelection();
-            cancelBtn.onclick(); // Reset form and close modal
-            window.hideLoader();
-            syncAllPending(); // Background sync
-        };
-
-        // --- SYNC & CONFIG ---
-        async function syncAllPending() {
-            if (isSyncing || !navigator.onLine) return;
-            const pending = await db.getAll('pending_defects');
-            if (pending.length === 0) return;
-            isSyncing = true;
-            for (const d of pending) {
-                try {
-                    const res = await authorizedPost('sync_defects', { defect: d });
-                    if (res && (await res.json()).status === 'success') await db.delete('pending_defects', d.id);
-                } catch (e) {}
-            }
-            isSyncing = false;
-            await loadProjectConfig(false);
-        }
-
-        async function loadProjectConfig(useLoader = true) {
-            if (useLoader) window.showLoader('Loading plans...');
-            const cached = localStorage.getItem('project_config');
-            if (cached) { projectConfig = JSON.parse(cached); renderSelectors(projectConfig); }
-            if (navigator.onLine) {
-                try {
-                    const res = await authorizedPost('get_config', {});
-                    if (res) {
-                        const result = await res.json();
-                        if (result.status === 'success') {
-                            projectConfig = result.config;
-                            localStorage.setItem('project_config', JSON.stringify(projectConfig));
-                            renderSelectors(projectConfig);
-                        }
-                    }
-                } catch (err) {}
-            }
-            if (useLoader) window.hideLoader();
-        }
-
-        function renderSelectors(config) {
-            if (config.unitNumbers) {
-                unitSelect.innerHTML = config.unitNumbers.map(u => `<option value="${u.number}">${u.number} (${u.type})</option>`).join('');
-            }
-            if (config.stories) {
-                storySelect.innerHTML = config.stories.map(s => `<option value="${s.value}">${s.label}</option>`).join('');
-            }
-            updateSelection();
-        }
-
-        async function updateSelection() {
-            const unitNumber = unitSelect.value;
-            const story = storySelect.value;
-            const unitMapping = projectConfig.unitNumbers.find(u => u.number === unitNumber);
-            const unitType = unitMapping ? unitMapping.type : unitNumber;
-            
-            unitDisplay.textContent = unitNumber;
-            floorDisplay.textContent = story;
-            pinsContainer.innerHTML = '';
-            
-            let mapUrl = 'assets/floorplan-placeholder.png';
-            if (projectConfig.maps) {
-                const currentMap = projectConfig.maps.find(m => m.unit === unitType && m.story === story);
-                if (currentMap) mapUrl = fixMapUrl(currentMap.mapUrl);
-            }
-            floorplanImg.src = mapUrl;
-            
-            if (projectConfig.syncedDefects) {
-                projectConfig.syncedDefects.forEach(d => {
-                    if (d.unit === unitNumber && d.story === story) addPinToUI(d, 'synced');
-                });
-            }
-            const pending = await db.getAll('pending_defects');
-            pending.forEach(d => {
-                if (d.unit === unitNumber && d.story === story) addPinToUI(d, 'pending');
+    photoInput.onchange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            document.getElementById('compressing-msg').style.display = 'block';
+            compressImage(file, 1024, 0.7, (base) => {
+                compressedPhotoData = base;
+                previewImg.src = base;
+                previewImg.style.display = 'block';
+                photoPlaceholder.style.display = 'none';
+                document.getElementById('compressing-msg').style.display = 'none';
             });
         }
+    };
 
-        function addPinToUI(defect, type) {
-            if (!defect || !defect.position) return;
-            const pin = document.createElement('div');
-            pin.className = 'pin';
-            pin.style.left = defect.position.x + '%'; 
-            pin.style.top = defect.position.y + '%';
-            const colors = { Open: '#f9ab00', Onprogress: '#1a73e8', Done: '#188038' };
-            pin.style.backgroundColor = colors[defect.status] || '#d93025';
-            if (type === 'pending') pin.style.boxShadow = '0 0 0 4px rgba(217, 48, 37, 0.4)';
-            pinsContainer.appendChild(pin);
-        }
-
-        function fixMapUrl(url) {
-            if (!url) return url;
-            const trimmed = url.trim();
-            if (trimmed.includes('drive.google.com') || trimmed.includes('googledrive.com')) {
-                const idMatch = trimmed.match(/\/d\/([^/?]+)/) || trimmed.match(/id=([^&?]+)/);
-                if (idMatch && idMatch[1]) return `https://drive.google.com/thumbnail?id=${idMatch[1]}&sz=w1600`;
-            }
-            return trimmed;
-        }
-
-        async function authorizedPost(action, payload) {
-            try {
-                const res = await fetch(GA_BACKEND_URL, {
-                    method: 'POST', headers: { 'Content-Type': 'text/plain' },
-                    body: JSON.stringify({ action, auth: { username: session.username, deviceId: session.deviceId, deviceToken: session.deviceToken }, ...payload })
-                });
-                if (res.status === 401) { localStorage.clear(); window.location.href = 'index.html'; return null; }
-                return res;
-            } catch (err) { return null; }
-        }
-
-        unitSelect.onchange = updateSelection;
-        storySelect.onchange = updateSelection;
-
-        await loadProjectConfig(true);
-        await checkAppVersion();
-
-    } catch (err) {
-        console.error("Defect Page Error:", err);
+    saveBtn.onclick = async () => {
+        const desc = document.getElementById('defect-desc').value.trim();
+        if (!desc || !compressedPhotoData) return alert('Photo and description are required.');
+        
+        window.showLoader('Saving Defect...');
+        const defect = { 
+            id: window.generateId('def'),
+            description: desc, photo: compressedPhotoData, position: activePinPosition, 
+            timestamp: new Date().toISOString(), unit: unitSelect.value, story: storySelect.value, status: 'Open', history: []
+        };
+        await db.put('pending_defects', defect);
+        await updateSelection();
+        cancelBtn.onclick();
         window.hideLoader();
+        syncAllPending(); // Background sync
+    };
+
+    async function syncAllPending() {
+        if (isSyncing || !navigator.onLine) return;
+        const pending = await db.getAll('pending_defects');
+        if (pending.length === 0) return;
+        isSyncing = true;
+        for (const d of pending) {
+            try {
+                const res = await window.authorizedPost('sync_defects', { defect: d });
+                if (res && (await res.json()).status === 'success') await db.delete('pending_defects', d.id);
+            } catch (e) {}
+        }
+        isSyncing = false;
+        await loadProjectConfig(false);
     }
+
+    async function loadProjectConfig(useLoader = true) {
+        if (useLoader) window.showLoader('Loading plans...');
+        const cached = localStorage.getItem('project_config');
+        if (cached) { projectConfig = JSON.parse(cached); renderSelectors(projectConfig); }
+        if (navigator.onLine) {
+            try {
+                const res = await window.authorizedPost('get_config', {});
+                if (res) {
+                    const result = await res.json();
+                    if (result.status === 'success') {
+                        projectConfig = result.config;
+                        localStorage.setItem('project_config', JSON.stringify(projectConfig));
+                        renderSelectors(projectConfig);
+                    }
+                }
+            } catch (err) {}
+        }
+        if (useLoader) window.hideLoader();
+    }
+
+    function renderSelectors(config) {
+        if (config.unitNumbers) {
+            unitSelect.innerHTML = config.unitNumbers.map(u => `<option value="${u.number}">${window.sanitize(u.number)} (${window.sanitize(u.type)})</option>`).join('');
+        }
+        if (config.stories) {
+            storySelect.innerHTML = config.stories.map(s => `<option value="${s.value}">${window.sanitize(s.label)}</option>`).join('');
+        }
+        updateSelection();
+    }
+
+    async function updateSelection() {
+        const unitNumber = unitSelect.value;
+        const story = storySelect.value;
+        const unitMapping = projectConfig.unitNumbers.find(u => u.number === unitNumber);
+        const unitType = unitMapping ? unitMapping.type : unitNumber;
+        
+        unitDisplay.textContent = unitNumber;
+        floorDisplay.textContent = story;
+        pinsContainer.innerHTML = '';
+        
+        let mapUrl = 'assets/floorplan-placeholder.png';
+        if (projectConfig.maps) {
+            const currentMap = projectConfig.maps.find(m => m.unit === unitType && m.story === story);
+            if (currentMap) mapUrl = window.fixMapUrl(currentMap.mapUrl);
+        }
+        floorplanImg.src = mapUrl;
+        
+        if (projectConfig.syncedDefects) {
+            projectConfig.syncedDefects.forEach(d => {
+                if (d.unit === unitNumber && d.story === story) addPinToUI(d, 'synced');
+            });
+        }
+        const pending = await db.getAll('pending_defects');
+        pending.forEach(d => {
+            if (d.unit === unitNumber && d.story === story) addPinToUI(d, 'pending');
+        });
+    }
+
+    function addPinToUI(defect, type) {
+        if (!defect || !defect.position) return;
+        const pin = document.createElement('div');
+        pin.className = 'pin';
+        pin.style.left = defect.position.x + '%'; 
+        pin.style.top = defect.position.y + '%';
+        const colors = { Open: '#f9ab00', Onprogress: '#1a73e8', Done: '#188038' };
+        pin.style.backgroundColor = colors[defect.status] || '#d93025';
+        if (type === 'pending') pin.style.boxShadow = '0 0 0 4px rgba(217, 48, 37, 0.4)';
+        pinsContainer.appendChild(pin);
+    }
+
+    unitSelect.onchange = updateSelection;
+    storySelect.onchange = updateSelection;
+
+    await loadProjectConfig(true);
+    window.checkAppVersion();
 });
 
 function compressImage(file, max, qual, cb) {
