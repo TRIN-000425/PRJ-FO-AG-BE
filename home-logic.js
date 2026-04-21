@@ -86,6 +86,47 @@ window.showDefectDetailById = (id) => {
     if (img) {
         img.src = defect.photo || (defect.photoUrl ? window.fixMapUrl(defect.photoUrl) : 'assets/floorplan-placeholder.png');
     }
+
+    // --- MINI MAP LOGIC ---
+    const miniMap = document.getElementById('detail-location-map');
+    if (miniMap && defect.position) {
+        const unitMapping = projectConfig.unitNumbers.find(u => u.number === defect.unit);
+        const unitType = unitMapping ? unitMapping.type : defect.unit;
+        let mapUrl = 'assets/floorplan-placeholder.png';
+        if (projectConfig.maps) {
+            const m = projectConfig.maps.find(map => map.unit === unitType && map.story === defect.story);
+            if (m) mapUrl = window.fixMapUrl(m.mapUrl);
+        }
+        miniMap.src = mapUrl;
+        // Zoom logic: center the pin (x,y in %) within the 4x scaled image
+        // To center (x,y) in a viewport, we need to translate the image
+        // Since image is 400% width, x=50% is at 200% mark.
+        const translateX = 50 - (defect.position.x * 4);
+        const translateY = 50 - (defect.position.y * 4);
+        miniMap.style.transform = `translate(${translateX}%, ${translateY}%) scale(1)`; 
+    }
+
+    const locationPreview = document.getElementById('detail-location-preview');
+    if (locationPreview) {
+        locationPreview.onclick = () => {
+            document.getElementById('detail-modal').style.display = 'none';
+            currentView = 'list';
+            const gridBtn = document.getElementById('view-grid-btn');
+            const listBtn = document.getElementById('view-list-btn');
+            if (gridBtn) gridBtn.className = 'outline';
+            if (listBtn) listBtn.className = 'primary';
+            applyFilters();
+            
+            setTimeout(() => {
+                const pin = document.getElementById(`pin-${defect.id}`);
+                if (pin) {
+                    pin.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    window.highlightPin(defect.id, true);
+                    setTimeout(() => window.highlightPin(defect.id, false), 3000);
+                }
+            }, 500);
+        };
+    }
     
     const updateSelect = document.getElementById('update-status-select');
     if (updateSelect) updateSelect.value = defect.status || 'Open';
