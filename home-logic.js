@@ -124,12 +124,22 @@ window.showDefectDetailById = (id) => {
         miniMap.style.position = 'absolute';
         miniMap.style.top = '0';
         miniMap.style.left = '0';
+        
+        const pin = document.querySelector('.location-preview-pin');
+        if (pin) pin.style.display = 'block';
+    } else {
+        const miniMap = document.getElementById('detail-location-map');
+        if (miniMap) miniMap.src = 'assets/floorplan-placeholder.png';
+        const pin = document.querySelector('.location-preview-pin');
+        if (pin) pin.style.display = 'none';
     }
 
     const locationPreview = document.getElementById('detail-location-preview');
     if (locationPreview) {
         locationPreview.onclick = (e) => {
             if (e) e.stopPropagation();
+            if (!defect.position) return;
+            
             const lightbox = document.getElementById('full-map-modal');
             const wrapper = document.getElementById('full-map-wrapper');
             const title = document.getElementById('full-map-title');
@@ -144,7 +154,7 @@ window.showDefectDetailById = (id) => {
                 }
 
                 title.textContent = `Unit ${defect.unit} - ${defect.story}`;
-                wrapper.innerHTML = `<img src="${mapUrl}" style="width:100%; display:block; border-radius:12px;">`;
+                wrapper.innerHTML = `<img src="${mapUrl}" style="width:100%; display:block; border-radius:12px; pointer-events: none;">`;
                 
                 // Add pins for this floor
                 const floorDefects = masterDefectList.filter(d => d.unit === defect.unit && d.story === defect.story);

@@ -2,7 +2,7 @@
  * Shared Utilities for Punch List PWA
  */
 
-window.APP_VERSION = "1.9.2";
+window.APP_VERSION = "1.9.3";
 
 // --- UI HELPERS ---
 window.showLoader = (text = 'Loading...') => {
