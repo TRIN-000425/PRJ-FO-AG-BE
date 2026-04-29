@@ -301,7 +301,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('refresh-admin-table-btn').onclick = () => refreshConfig(false);
     document.getElementById('force-purge-btn').onclick = async () => {
         if (confirm('Force purge local cache and re-download?')) {
-            window.showLoader('Clearing Cache...');
+            window.showLoader('Clearing Cache...', 15000);
             localStorage.removeItem('project_config');
             await refreshConfig(false);
         }

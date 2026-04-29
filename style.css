@@ -451,6 +451,26 @@ input:focus, select:focus, textarea:focus {
     text-transform: uppercase;
 }
 
+/* Progress Bar in Loader */
+.progress-container {
+    width: 200px;
+    height: 6px;
+    background-color: #e8eaed;
+    border-radius: 3px;
+    margin-top: 16px;
+    position: relative;
+    z-index: 3;
+    overflow: hidden;
+    display: none;
+}
+
+.progress-fill {
+    height: 100%;
+    width: 0%;
+    background-color: var(--primary-color);
+    transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
 /* Quick View Popover */
 .pin-popover {
     position: absolute;

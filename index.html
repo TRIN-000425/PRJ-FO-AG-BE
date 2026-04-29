@@ -50,12 +50,15 @@
             <div class="slider-bar"></div>
         </div>
         <p id="loader-text">Loading...</p>
+        <div class="progress-container" id="loader-progress-container">
+            <div class="progress-fill" id="loader-progress-fill"></div>
+        </div>
     </div>
 
     <script src="libs/idb.js"></script>
     <script src="libs/utils.js"></script>
-    <script src="config.js?v=1.9.9"></script>
-    <script src="app.js?v=1.9.9"></script>
+    <script src="config.js?v=2.0.0"></script>
+    <script src="app.js?v=2.0.0"></script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {

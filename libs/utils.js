@@ -2,21 +2,67 @@
  * Shared Utilities for Punch List PWA
  */
 
-window.APP_VERSION = "1.9.9";
+window.APP_VERSION = "2.0.0";
 
 // --- UI HELPERS ---
-window.showLoader = (text = 'Loading...') => {
+let progressInterval = null;
+
+window.showLoader = (text = 'Loading...', duration = 15000) => {
     const loader = document.getElementById('global-loader');
     const loaderText = document.getElementById('loader-text');
+    const progressContainer = document.getElementById('loader-progress-container');
+    const progressFill = document.getElementById('loader-progress-fill');
+
     if (loader) {
         if (loaderText) loaderText.textContent = text;
         loader.style.display = 'flex';
+        
+        if (progressContainer && progressFill) {
+            progressContainer.style.display = 'block';
+            progressFill.style.width = '0%';
+            
+            let startTime = Date.now();
+            if (progressInterval) clearInterval(progressInterval);
+            
+            progressInterval = setInterval(() => {
+                const elapsed = Date.now() - startTime;
+                let timeRatio = elapsed / duration;
+                if (timeRatio > 1) timeRatio = 1;
+                
+                let progress = 0;
+                // Non-linear: Fast to 80% (in 20% of time), then slow to 100%
+                const fastTimeRatio = 0.2;
+                const fastProgressLimit = 0.8;
+                
+                if (timeRatio <= fastTimeRatio) {
+                    progress = (timeRatio / fastTimeRatio) * fastProgressLimit;
+                } else {
+                    const slowTimeRatio = (timeRatio - fastTimeRatio) / (1 - fastTimeRatio);
+                    progress = fastProgressLimit + (slowTimeRatio * (1 - fastProgressLimit));
+                }
+                
+                progressFill.style.width = (progress * 100) + '%';
+                
+                if (timeRatio >= 1) {
+                    clearInterval(progressInterval);
+                    setTimeout(() => {
+                        if (loader.style.display === 'flex') {
+                            alert('Request timed out. Please try again.');
+                            window.hideLoader();
+                        }
+                    }, 500);
+                }
+            }, 50);
+        }
     }
 };
 
 window.hideLoader = () => {
     const loader = document.getElementById('global-loader');
+    const progressContainer = document.getElementById('loader-progress-container');
     if (loader) loader.style.display = 'none';
+    if (progressContainer) progressContainer.style.display = 'none';
+    if (progressInterval) clearInterval(progressInterval);
 };
 
 // --- DATA & API ---
