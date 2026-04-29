@@ -96,12 +96,23 @@ document.addEventListener('DOMContentLoaded', async () => {
         cancelBtn.onclick();
         window.hideLoader();
         syncAllPending(); // Background sync
+        updateSyncBadge();
     };
+
+    async function updateSyncBadge() {
+        const pending = await db.getAll('pending_defects');
+        const count = pending.length;
+        const syncBadge = document.getElementById('sync-badge');
+        if (syncBadge) {
+            syncBadge.style.display = count > 0 ? 'flex' : 'none';
+            syncBadge.textContent = count;
+        }
+    }
 
     async function syncAllPending() {
         if (isSyncing || !navigator.onLine) return;
         const pending = await db.getAll('pending_defects');
-        if (pending.length === 0) return;
+        if (pending.length === 0) { updateSyncBadge(); return; }
         isSyncing = true;
         for (const d of pending) {
             try {
@@ -110,6 +121,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             } catch (e) {}
         }
         isSyncing = false;
+        updateSyncBadge();
         await loadProjectConfig(false);
     }
 
@@ -187,6 +199,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     storySelect.onchange = updateSelection;
 
     await loadProjectConfig(true);
+    await updateSyncBadge();
     window.checkAppVersion();
 });
 
@@ -196,19 +209,13 @@ function compressImage(file, max, qual, cb) {
         const img = new Image();
         img.onload = () => {
             const canvas = document.createElement('canvas');
-            // Force square canvas
             canvas.width = max;
             canvas.height = max;
             const ctx = canvas.getContext('2d');
-            
-            // Fill background with black
             ctx.fillStyle = '#000000';
             ctx.fillRect(0, 0, max, max);
-
             let w = img.width, h = img.height;
             let targetW, targetH;
-
-            // Calculate scaled dimensions to fit inside max x max square
             if (w > h) {
                 targetW = max;
                 targetH = h * (max / w);
@@ -216,11 +223,8 @@ function compressImage(file, max, qual, cb) {
                 targetH = max;
                 targetW = w * (max / h);
             }
-
-            // Center the image on the square canvas
             const offsetX = (max - targetW) / 2;
             const offsetY = (max - targetH) / 2;
-
             ctx.drawImage(img, offsetX, offsetY, targetW, targetH);
             cb(canvas.toDataURL('image/jpeg', qual));
         };

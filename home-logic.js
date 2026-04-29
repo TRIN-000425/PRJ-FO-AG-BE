@@ -370,7 +370,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         const count = pending.length;
         const banner = document.getElementById('unsynced-banner');
+        const syncBadge = document.getElementById('sync-badge');
         if (banner) banner.style.display = count > 0 ? 'block' : 'none';
+        if (syncBadge) {
+            syncBadge.style.display = count > 0 ? 'flex' : 'none';
+            syncBadge.textContent = count;
+        }
         if (document.getElementById('unsynced-count')) document.getElementById('unsynced-count').textContent = count;
     }
 
