@@ -109,18 +109,18 @@ window.showDefectDetailById = (id) => {
         
         miniMap.src = mapUrl;
 
-        // Correct Zoom Math for aspect-ratio preserved image (contain):
-        // We set transform-origin to the defect point and scale up.
-        // This keeps the defect point centered if we also move it.
+        // Correct Zoom Math:
+        // 1. Move the image's target point (x%, y%) to the center of the container (50%, 50%).
+        // 2. Scale up around that same target point so it stays centered.
         const scale = 4;
         miniMap.style.width = '100%';
-        miniMap.style.height = '100%';
-        miniMap.style.objectFit = 'contain';
-        miniMap.style.transformOrigin = `${defect.position.x}% ${defect.position.y}%`;
-        miniMap.style.transform = `scale(${scale})`;
+        miniMap.style.height = 'auto'; // Use natural aspect ratio
+        miniMap.style.objectFit = 'none'; // Disable object-fit
         miniMap.style.position = 'absolute';
-        miniMap.style.top = '0';
-        miniMap.style.left = '0';
+        miniMap.style.left = '50%';
+        miniMap.style.top = '50%';
+        miniMap.style.transformOrigin = `${defect.position.x}% ${defect.position.y}%`;
+        miniMap.style.transform = `translate(-${defect.position.x}%, -${defect.position.y}%) scale(${scale})`;
         
         const pin = document.querySelector('.location-preview-pin');
         if (pin) pin.style.display = 'block';
