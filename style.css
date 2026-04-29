@@ -395,8 +395,8 @@ input:focus, select:focus, textarea:focus {
     background-size: contain;
     background-repeat: no-repeat;
     background-position: center;
-    width: 160px;
-    height: 160px;
+    width: 200px;
+    height: 200px;
     position: relative;
     z-index: 3;
     animation: logoAppear 0.8s ease-out forwards;
@@ -412,16 +412,18 @@ input:focus, select:focus, textarea:focus {
     transform-origin: center center;
     overflow: hidden;
     z-index: -1;
-    opacity: 0.4;
+    opacity: 1;
 }
 
 .slider-bar {
     position: absolute;
     width: 200vw;
     height: 30vh;
-    background: linear-gradient(90deg, rgba(26, 115, 232, 0) 0%, rgba(26, 115, 232, 0.15) 50%, rgba(26, 115, 232, 0) 100%);
+    background: linear-gradient(90deg, rgba(218, 165, 32, 0) 0%, rgba(218, 165, 32, 0.3) 50%, rgba(218, 165, 32, 0) 100%);
     right: -100vw;
-    animation: sliderAnimation 5s linear infinite;
+    transform-origin: center center;
+    transform: scaleY(1.2) scaleX(0.7);
+    animation: sliderAnimationReverse 5s linear infinite;
 }
 
 .slider-bar:nth-child(1) { top: -22.5%; animation-delay: 0s; }
@@ -429,14 +431,21 @@ input:focus, select:focus, textarea:focus {
 .slider-bar:nth-child(3) { top: -7.5%; animation-delay: 1s; }
 .slider-bar:nth-child(4) { top: 0%; animation-delay: 1.5s; }
 .slider-bar:nth-child(5) { top: 7.5%; animation-delay: 2s; }
+.slider-bar:nth-child(6) { top: 15%; animation-delay: 2.5s; }
+.slider-bar:nth-child(7) { top: 22.5%; animation-delay: 3s; }
+.slider-bar:nth-child(8) { top: 30%; animation-delay: 3.5s; }
+.slider-bar:nth-child(9) { top: 37.5%; animation-delay: 4s; }
+.slider-bar:nth-child(10) { top: 45%; animation-delay: 4.5s; }
+.slider-bar:nth-child(11) { top: 52.5%; animation-delay: 0s; }
+.slider-bar:nth-child(12) { top: 60%; animation-delay: 0.5s; }
 
-@keyframes sliderAnimation {
+@keyframes sliderAnimationReverse {
     0% { right: -100vw; }
     100% { right: 200vw; }
 }
 
 @keyframes logoAppear {
-    0% { transform: scale(0.85); opacity: 0; }
+    0% { transform: scale(0.7); opacity: 0; }
     100% { transform: scale(1); opacity: 1; }
 }
 
@@ -446,16 +455,22 @@ input:focus, select:focus, textarea:focus {
     margin-top: 24px;
     position: relative;
     z-index: 3;
-    font-size: 1rem;
+    font-size: 1.1rem;
     letter-spacing: 1px;
     text-transform: uppercase;
+    animation: textAppear 0.8s ease-out forwards;
+}
+
+@keyframes textAppear { 
+    0% { opacity: 0; transform: translateY(10px); } 
+    100% { opacity: 1; transform: translateY(0); } 
 }
 
 /* Progress Bar in Loader */
 .progress-container {
     width: 200px;
     height: 6px;
-    background-color: #e8eaed;
+    background-color: rgba(0,0,0,0.05);
     border-radius: 3px;
     margin-top: 16px;
     position: relative;
@@ -467,7 +482,7 @@ input:focus, select:focus, textarea:focus {
 .progress-fill {
     height: 100%;
     width: 0%;
-    background-color: var(--primary-color);
+    background-color: #daa520; /* Gold color */
     transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 

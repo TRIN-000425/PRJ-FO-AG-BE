@@ -2,7 +2,7 @@
  * Shared Utilities for Punch List PWA
  */
 
-window.APP_VERSION = "2.0.0";
+window.APP_VERSION = "2.0.1";
 
 // --- UI HELPERS ---
 let progressInterval = null;
