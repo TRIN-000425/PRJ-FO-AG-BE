@@ -486,6 +486,61 @@ input:focus, select:focus, textarea:focus {
     transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* Custom Notification Modal */
+#notification-modal {
+    z-index: 6000;
+}
+
+.notif-card {
+    background-color: var(--surface-color);
+    width: 90%;
+    max-width: 400px;
+    border-radius: 20px;
+    padding: 24px;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.notif-icon {
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+}
+
+.notif-icon.info { background-color: rgba(26, 115, 232, 0.1); color: var(--primary-color); }
+.notif-icon.error { background-color: rgba(217, 48, 37, 0.1); color: var(--error-color); }
+.notif-icon.confirm { background-color: rgba(249, 171, 0, 0.1); color: var(--warning-color); }
+.notif-icon.success { background-color: rgba(24, 128, 56, 0.1); color: var(--success-color); }
+
+.notif-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 12px;
+    color: var(--text-primary);
+}
+
+.notif-message {
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    margin-bottom: 24px;
+}
+
+.notif-actions {
+    display: flex;
+    gap: 12px;
+}
+
+.notif-actions button {
+    flex: 1;
+    height: 48px;
+}
+
 /* Quick View Popover */
 .pin-popover {
     position: absolute;

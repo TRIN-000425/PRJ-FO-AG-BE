@@ -231,10 +231,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     document.getElementById('logout-label').onclick = (e) => {
         e.preventDefault();
-        if (confirm('Sign out?')) {
+        window.showConfirm('Are you sure you want to sign out?', () => {
             localStorage.clear(); 
             window.location.href = 'index.html';
-        }
+        }, null, 'Sign Out');
     };
 
     document.getElementById('sync-label').onclick = async (e) => {
@@ -300,11 +300,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('close-admin-btn').onclick = () => document.getElementById('admin-modal').style.display = 'none';
     document.getElementById('refresh-admin-table-btn').onclick = () => refreshConfig(false);
     document.getElementById('force-purge-btn').onclick = async () => {
-        if (confirm('Force purge local cache and re-download?')) {
+        window.showConfirm('Force purge local cache and re-download?', async () => {
             window.showLoader('Clearing Cache...', 15000);
             localStorage.removeItem('project_config');
             await refreshConfig(false);
-        }
+        }, null, 'Purge Cache');
     };
 
     async function syncAllPending(silent = false) {

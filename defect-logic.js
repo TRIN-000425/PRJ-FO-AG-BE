@@ -83,7 +83,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     saveBtn.onclick = async () => {
         const desc = document.getElementById('defect-desc').value.trim();
-        if (!desc || !compressedPhotoData) return alert('Photo and description are required.');
+        if (!desc || !compressedPhotoData) return window.showAlert('Photo and description are required.', 'Missing Information', 'error');
         
         window.showLoader('Saving Defect...');
         const defect = { 
